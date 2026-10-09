@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>류청우 파트</title>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.181.1/build/three.module.js';
+
+const sphere = new THREE.SphereGeometry(1, 40, 28);
+const glass = (color, options = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.04, transmission: 1, thickness: 1.2, ior: 1.45, clearcoat: 1, ...options });
+const ink = new THREE.MeshStandardMaterial({ color: 0x2b1b1b, roughness: 0.3 });
+const ellipsoid = (w, h, d, material, x = 0, y = 0, z = 0, rz = 0) => {
+  const mesh = new THREE.Mesh(sphere, material);
+  mesh.scale.set(w, h, d); mesh.position.set(x, y, z); mesh.rotation.z = rz;
+  return mesh;
+};
+const surface = (w, h, d, x, y) => d * Math.sqrt(Math.max(0, 1 - (x / w) ** 2 - (y / h) ** 2));
+const model = new THREE.Group();
+const partEdits = /* PART_EDITS_BEGIN */
+{
+  "머리": {
+    "position": [
+      0,
+      0.1,
+      0
+    ],
+    "size": 1.08,
+    "axisScale": [
+      1,
+      0.8,
+      1
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true
+  },
+  "왼쪽 눈": {
+    "position": [
+      0,
+      0,
+      0.06
+    ],
+    "size": 1,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true
+  },
+  "오른쪽 눈": {
+    "position": [
+      0,
+      0,
+      0.06
+    ],
+    "size": 1,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true
+  },
+  "부리": {
+    "position": [
+      0,
+      0,
+      0.13
+    ],
+    "size": 0.76,
+    "axisScale": [
+      0.81,
+      0.68,
+      1
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true
+  },
+  "__settings": {
+    "clipFeathers": false
+  },
+  "깃털 1": {
+    "position": [
+      0,
+      0.1,
+      -0.03
+    ],
+    "size": 1.27,
+    "axisScale": [
+      0.91,
+      0.6,
+      0.88
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true,
+    "color": "#ffffff"
+  },
+  "깃털 2": {
+    "position": [
+      -0.05,
+      0.1,
+      -0.01
+    ],
+    "size": 1.27,
+    "axisScale": [
+      0.91,
+      0.6,
+      0.88
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true,
+    "color": "#ffffff"
+  },
+  "깃털 3": {
+    "position": [
+      0,
+      0.1,
+      -0.03
+    ],
+    "size": 1.27,
+    "axisScale": [
+      0.91,
+      0.6,
+      0.88
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true,
+    "color": "#ffffff"
+  },
+  "깃털 4": {
+    "position": [
+      0,
+      0.1,
+      -0.03
+    ],
+    "size": 1.27,
+    "axisScale": [
+      0.91,
+      0.6,
+      0.88
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true,
+    "color": "#ffffff"
+  },
+  "깃털 5": {
+    "position": [
+      0,
+      0.1,
+      -0.03
+    ],
+    "size": 1.27,
+    "axisScale": [
+      0.91,
+      0.6,
+      0.88
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true,
+    "color": "#ffffff"
+  },
+  "깃털 6": {
+    "position": [
+      0,
+      0.1,
+      -0.03
+    ],
+    "size": 1.27,
+    "axisScale": [
+      0.91,
+      0.6,
+      0.88
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true,
+    "color": "#ffffff"
+  },
+  "깃털 7": {
+    "position": [
+      0,
+      0.1,
+      -0.03
+    ],
+    "size": 1.27,
+    "axisScale": [
+      0.91,
+      0.6,
+      0.88
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true,
+    "color": "#ffffff"
+  }
+}
+/* PART_EDITS_END */;
+const headRadius = 0.9;
+const headGroup = new THREE.Group();
+const headMaterial = glass(0xffffff);
+const headCylinder = new THREE.Mesh(new THREE.CylinderGeometry(headRadius, headRadius, 1.2, 40), headMaterial);
+headCylinder.position.y = -0.45;
+headGroup.add(headCylinder);
+const headDome = new THREE.Mesh(new THREE.SphereGeometry(headRadius, 40, 24, 0, Math.PI * 2, 0, Math.PI / 2), headMaterial);
+headDome.position.y = 0.15;
+headGroup.add(headDome);
+model.add(headGroup);
+const featherColors = [0xd9dfe6, 0xe3e8ed, 0xebeff3, 0xf2f4f6, 0xebeff3, 0xe3e8ed, 0xd9dfe6];
+for (let i = 0; i < 7; i++) {
+  const feather = ellipsoid(0.32, 0.55, 0.12, new THREE.MeshStandardMaterial({ color: featherColors[i], roughness: 0.42 }));
+  const angle = (i / 7) * Math.PI * 2;
+  const radius = 0.84;
+  feather.position.set(Math.sin(angle) * radius, -0.82, Math.cos(angle) * radius);
+  feather.rotation.y = angle;
+  model.add(feather);
+}
+for (const side of [-1, 1]) {
+  const x = side * 0.45, y = 0.12, eye = new THREE.Group();
+  eye.add(ellipsoid(0.15, 0.105, 0.06, ink));
+  eye.position.set(x, y, Math.max(0.15, surface(1, 1.2, 0.9, x, y) * 0.88)); eye.scale.setScalar(1.8); model.add(eye);
+}
+model.add(ellipsoid(0.26, 0.32, 0.14, glass(0xffb81c, { transmission: 0.6 }), 0, -0.2, 0.8));
+const componentNames = ['머리', '깃털 1', '깃털 2', '깃털 3', '깃털 4', '깃털 5', '깃털 6', '깃털 7', '왼쪽 눈', '오른쪽 눈', '부리'];
+model.children.forEach((child, index) => { child.name = componentNames[index]; });
+model.updateMatrixWorld(true);
+parent.postMessage({
+  type: 'lightstick-part',
+  file: window.__PART_FILE || window.name || new URLSearchParams(location.search).get('partFile') || location.pathname.split('/').pop(),
+  object: model.toJSON(),
+  edits: partEdits,
+  clipping: { cylinderRadius: 0.9, featherRadius: 0.84, featherDepth: 0.12 }
+}, '*');
+</script>
+</body>
+</html>

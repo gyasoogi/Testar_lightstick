@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>차유진 파트</title>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.181.1/build/three.module.js';
+
+const sphere = new THREE.SphereGeometry(1, 40, 28);
+const glass = (color) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.04, transmission: 1, thickness: 1.2, ior: 1.45, clearcoat: 1 });
+const frost = (color) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.45, transmission: 0.5, thickness: 0.4 });
+const ink = new THREE.MeshStandardMaterial({ color: 0x2b1b1b, roughness: 0.3 });
+const solid = (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.35 });
+const ellipsoid = (w, h, d, material, x = 0, y = 0, z = 0, rz = 0) => {
+  const mesh = new THREE.Mesh(sphere, material);
+  mesh.scale.set(w, h, d); mesh.position.set(x, y, z); mesh.rotation.z = rz;
+  return mesh;
+};
+const surface = (w, h, d, x, y) => d * Math.sqrt(Math.max(0, 1 - (x / w) ** 2 - (y / h) ** 2));
+const cone = (radius, height, material, x, y, z, rz) => {
+  const mesh = new THREE.Mesh(new THREE.ConeGeometry(radius, height, 4), material);
+  mesh.rotation.y = Math.PI / 4; mesh.scale.z = 0.45;
+  const group = new THREE.Group(); group.add(mesh); group.position.set(x, y, z); group.rotation.z = rz;
+  return group;
+};
+const model = new THREE.Group();
+const partEdits = /* PART_EDITS_BEGIN */
+{
+  "코": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "size": 1,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": false
+  },
+  "무늬 왼쪽": {
+    "position": [
+      0,
+      0,
+      0.07
+    ],
+    "size": 1,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      -35,
+      0,
+      0
+    ],
+    "visible": true
+  },
+  "무늬 가운데": {
+    "position": [
+      0,
+      0,
+      0.07
+    ],
+    "size": 1,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      -35,
+      0,
+      0
+    ],
+    "visible": true
+  },
+  "무늬 오른쪽": {
+    "position": [
+      0,
+      0,
+      0.07
+    ],
+    "size": 1,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      -35,
+      0,
+      0
+    ],
+    "visible": true
+  },
+  "오른쪽 귀 안쪽": {
+    "position": [
+      -0.05,
+      0,
+      0.01
+    ],
+    "size": 1,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true
+  },
+  "왼쪽 귀 안쪽": {
+    "position": [
+      0,
+      0,
+      0.02
+    ],
+    "size": 1,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true
+  },
+  "머리": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "size": 1,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true
+  }
+}
+/* PART_EDITS_END */;
+model.add(ellipsoid(1.15, 0.95, 0.9, glass(0xff7466)));
+for (const side of [-1, 1]) {
+  model.add(cone(0.42, 0.75, glass(0xff7466), side * 0.72, 0.88, 0, -side * 0.4));
+  model.add(cone(0.24, 0.45, frost(0xffd0d0), side * 0.72, 0.82, 0.06, -side * 0.4));
+}
+for (const x of [-0.2, 0, 0.2]) model.add(ellipsoid(0.03, 0.17, 0.03, solid(0xc5352a), x, 0.62, surface(1.15, 0.95, 0.9, x, 0.62) * 0.9, x * 1.5));
+for (const side of [-1, 1]) {
+  const x = side * 0.45, y = -0.08, eye = new THREE.Group();
+  eye.add(ellipsoid(0.15, 0.105, 0.06, ink));
+  eye.position.set(x, y, Math.max(0.15, surface(1.15, 0.95, 0.9, x, y) * 0.88)); eye.scale.setScalar(1.8); model.add(eye);
+}
+model.add(ellipsoid(0.05, 0.035, 0.04, ink, 0, -0.3, surface(1.15, 0.95, 0.9, 0, -0.3) * 0.9));
+const componentNames = ['머리', '왼쪽 귀', '왼쪽 귀 안쪽', '오른쪽 귀', '오른쪽 귀 안쪽', '무늬 왼쪽', '무늬 가운데', '무늬 오른쪽', '왼쪽 눈', '오른쪽 눈', '코'];
+model.children.forEach((child, index) => { child.name = componentNames[index]; });
+model.updateMatrixWorld(true);
+parent.postMessage({ type: 'lightstick-part', file: window.__PART_FILE || window.name || new URLSearchParams(location.search).get('partFile') || location.pathname.split('/').pop(), object: model.toJSON(), edits: partEdits }, '*');
+</script>
+</body>
+</html>

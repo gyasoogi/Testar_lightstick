@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>이세진 파트</title>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.181.1/build/three.module.js';
+
+const sphere = new THREE.SphereGeometry(1, 40, 28);
+const glass = (color) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.04, transmission: 1, thickness: 1.2, ior: 1.45, clearcoat: 1 });
+const frost = (color) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.45, transmission: 0.5, thickness: 0.4 });
+const ink = new THREE.MeshStandardMaterial({ color: 0x2b1b1b, roughness: 0.3 });
+const ellipsoid = (w, h, d, material, x = 0, y = 0, z = 0, rz = 0) => {
+  const mesh = new THREE.Mesh(sphere, material);
+  mesh.scale.set(w, h, d); mesh.position.set(x, y, z); mesh.rotation.z = rz;
+  return mesh;
+};
+const surface = (w, h, d, x, y) => d * Math.sqrt(Math.max(0, 1 - (x / w) ** 2 - (y / h) ** 2));
+const model = new THREE.Group();
+const partEdits = /* PART_EDITS_BEGIN */
+{
+  "왼쪽 귀 안쪽": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "size": 1.11,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true
+  },
+  "오른쪽 귀 안쪽": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "size": 1.11,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true
+  },
+  "코": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "size": 1,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": false
+  },
+  "__settings": {
+    "clipFeathers": false
+  },
+  "주둥이": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "size": 1,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": false
+  }
+}
+/* PART_EDITS_END */;
+model.add(ellipsoid(1.2, 1, 0.95, glass(0xb27a55)));
+for (const side of [-1, 1]) {
+  model.add(ellipsoid(0.36, 0.36, 0.25, glass(0xb27a55), side * 0.88, 0.78));
+  model.add(ellipsoid(0.2, 0.2, 0.1, frost(0xf0c9a6), side * 0.88, 0.78, 0.15));
+}
+model.add(ellipsoid(0.42, 0.33, 0.3, frost(0xffeccf), 0, -0.32, 0.7));
+for (const side of [-1, 1]) {
+  const x = side * 0.48, y = 0.02, eye = new THREE.Group();
+  eye.add(ellipsoid(0.15, 0.105, 0.06, ink));
+  eye.position.set(x, y, Math.max(0.15, surface(1.2, 1, 0.95, x, y) * 0.88)); eye.scale.setScalar(1.8); model.add(eye);
+}
+model.add(ellipsoid(0.05, 0.035, 0.04, ink, 0, -0.22, surface(1.2, 1, 0.95, 0, -0.22) * 0.9));
+const componentNames = ['머리', '왼쪽 귀', '왼쪽 귀 안쪽', '오른쪽 귀', '오른쪽 귀 안쪽', '주둥이', '왼쪽 눈', '오른쪽 눈', '코'];
+model.children.forEach((child, index) => { child.name = componentNames[index]; });
+model.updateMatrixWorld(true);
+parent.postMessage({ type: 'lightstick-part', file: window.__PART_FILE || window.name || new URLSearchParams(location.search).get('partFile') || location.pathname.split('/').pop(), object: model.toJSON(), edits: partEdits }, '*');
+</script>
+</body>
+</html>
