@@ -224,6 +224,7 @@
     버튼 클릭: 조명 ON/OFF<br/>
     <button id="toggle">LIGHT ON</button>
     <button id="darkModeToggle" type="button" aria-pressed="false">다크모드 OFF</button>
+    <button id="chaTransformationReset" type="button" hidden>변신 해제하기</button>
   </div>
 
   <div class="part-panel" id="partPanel">
@@ -560,6 +561,41 @@
     const selectedPartFiles = new Map(slotConfigs.map((config) => [config.id, config.defaultFile]));
     const loadedPartModels = new Map();
     const ribbonCombination = [...ribbonColors.keys()];
+    const chaColorCombination = ['cha.html', 'kim.html', 'ryu.html'];
+    let chaTransformationDismissed = false;
+    const chaCombinationColors = new Map([
+      ['머리', 0x383b40],
+      ['왼쪽 귀', 0x383b40],
+      ['오른쪽 귀', 0x383b40],
+      ['무늬 왼쪽', 0x383b40],
+      ['무늬 가운데', 0x383b40],
+      ['무늬 오른쪽', 0x383b40],
+      ['왼쪽 눈', 0xf2cf45],
+      ['오른쪽 눈', 0xf2cf45],
+      ['왼쪽 눈썹', 0xf2cf45],
+      ['오른쪽 눈썹', 0xf2cf45]
+    ]);
+
+    function updateChaCombinationColors(model, enabled) {
+      chaCombinationColors.forEach((color, name) => {
+        const component = model.getObjectByName(name);
+        if (!component) return;
+        component.traverse((object) => {
+          if (!object.isMesh) return;
+          if (!object.userData.combinationBaseMaterials) {
+            const materials = Array.isArray(object.material) ? object.material : [object.material];
+            object.userData.combinationMaterialArray = Array.isArray(object.material);
+            object.userData.combinationBaseMaterials = materials;
+            object.userData.combinationOverrideMaterials = materials.map((material) => material.clone());
+          }
+          const materials = enabled
+            ? object.userData.combinationOverrideMaterials
+            : object.userData.combinationBaseMaterials;
+          if (enabled) materials.forEach((material) => material.color.set(color));
+          object.material = object.userData.combinationMaterialArray ? materials : materials[0];
+        });
+      });
+    }
 
     function createForeheadRibbon(head, color) {
       const ribbon = new THREE.Group();
@@ -578,14 +614,23 @@
       loopShape.quadraticCurveTo(-0.43, -0.16, -0.29, -0.22);
       loopShape.quadraticCurveTo(-0.05, -0.19, 0, 0);
       const loopGeometry = new THREE.ExtrudeGeometry(loopShape, {
-        depth: 0.045,
+        depth: 0.055,
         bevelEnabled: true,
-        bevelSegments: 4,
-        bevelSize: 0.025,
-        bevelThickness: 0.035,
+        bevelSegments: 5,
+        bevelSize: 0.03,
+        bevelThickness: 0.04,
         steps: 1,
         curveSegments: 12
       });
+      const loopPositions = loopGeometry.attributes.position;
+      for (let index = 0; index < loopPositions.count; index += 1) {
+        const x = loopPositions.getX(index);
+        const y = loopPositions.getY(index);
+        const domeRadius = ((x + 0.215) / 0.32) ** 2 + (y / 0.27) ** 2;
+        const dome = Math.pow(Math.max(0, 1 - domeRadius), 1.5);
+        loopPositions.setZ(index, loopPositions.getZ(index) + 0.18 * dome);
+      }
+      loopGeometry.computeVertexNormals();
       const leftLoop = new THREE.Mesh(loopGeometry, ribbonMaterial);
       leftLoop.position.z = -0.045;
       ribbon.add(leftLoop);
@@ -600,7 +645,8 @@
       knot.scale.set(1.05, 1.1, 0.85);
       ribbon.add(knot);
       ribbon.scale.setScalar(1.45);
-      ribbon.position.set(0, 0.56, 0.98);
+      ribbon.position.set(0, 0.7, 0.64);
+      ribbon.rotation.x = -Math.PI / 4;
       ribbon.visible = false;
       head.add(ribbon);
       return ribbon;
@@ -610,8 +656,14 @@
       const selectedFiles = [...selectedPartFiles.values()].map((file) => file.split('/').pop());
       const hasRibbonCombination = selectedFiles.length === ribbonCombination.length
         && ribbonCombination.every((file) => selectedFiles.includes(file));
-      loadedPartModels.forEach(({ file, ribbon }) => {
+      const hasChaColorCombination = selectedFiles.length === chaColorCombination.length
+        && chaColorCombination.every((file) => selectedFiles.includes(file));
+      if (!hasChaColorCombination) chaTransformationDismissed = false;
+      const isChaTransformationActive = hasChaColorCombination && !chaTransformationDismissed;
+      chaTransformationReset.hidden = !isChaTransformationActive;
+      loadedPartModels.forEach(({ file, ribbon, model }) => {
         if (ribbon) ribbon.visible = hasRibbonCombination && ribbonCombination.includes(file);
+        if (file === 'cha.html') updateChaCombinationColors(model, isChaTransformationActive);
       });
     }
 
@@ -619,6 +671,12 @@
     const partPanelToggle = document.getElementById('partPanelToggle');
     const partPanelContent = document.getElementById('partPanelContent');
     const spindleToggle = document.getElementById('spindleToggle');
+    const chaTransformationReset = document.getElementById('chaTransformationReset');
+
+    chaTransformationReset.addEventListener('click', () => {
+      chaTransformationDismissed = true;
+      updateCombinationRibbons();
+    });
 
     spindleToggle.addEventListener('change', () => {
       partSpindle.visible = spindleToggle.checked;
@@ -686,7 +744,8 @@
         inSceneMesh.traverse((object) => {
           object.geometry?.dispose?.();
           const materials = Array.isArray(object.material) ? object.material : [object.material];
-          materials.forEach((material) => material?.dispose?.());
+          const overrideMaterials = object.userData.combinationOverrideMaterials || [];
+          new Set([...materials, ...overrideMaterials]).forEach((material) => material?.dispose?.());
         });
         inSceneMesh = null;
       };
@@ -725,7 +784,7 @@
           const ribbon = ribbonColor && head ? createForeheadRibbon(head, ribbonColor) : null;
           group.add(model);
           inSceneMesh = model;
-          loadedPartModels.set(config.id, { file: currentFile, ribbon });
+          loadedPartModels.set(config.id, { file: currentFile, ribbon, model });
           updateCombinationRibbons();
         } catch (error) {
           console.error(`파트 모델을 불러오지 못했습니다: ${config.label}`, error);
