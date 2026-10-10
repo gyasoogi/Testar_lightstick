@@ -20,6 +20,45 @@
       width: 100%;
       height: 100%;
     }
+    .capture-frame,
+    .capture-frame img {
+      display: none;
+    }
+    .capture-frame {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      pointer-events: none;
+    }
+    body.capture-mode .capture-frame {
+      display: block;
+    }
+    body.capture-mode .ui,
+    body.capture-mode .part-panel {
+      display: none;
+    }
+    body.capture-mode .capture-frame .desktop-frame {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    @media (max-width: 600px) {
+      body.capture-mode .capture-frame .desktop-frame {
+        display: none;
+      }
+      body.capture-mode .capture-frame .phone-frame {
+        position: absolute;
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      body.capture-mode .capture-frame .phone-top {
+        top: 0;
+      }
+      body.capture-mode .capture-frame .phone-bottom {
+        bottom: 0;
+      }
+    }
     .ui {
       position: fixed;
       left: 18px;
@@ -49,6 +88,70 @@
     .ui button + button {
       margin-left: 5px;
     }
+    .view-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 3px;
+    }
+    .view-controls button {
+      margin: 0;
+      padding: 6px 9px;
+      font-size: 11px;
+    }
+    .view-controls button + button {
+      margin-left: 0;
+    }
+    #captureControls {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      z-index: 30;
+      display: flex;
+      gap: 8px;
+      transform: translateX(-50%);
+    }
+    #captureControls[hidden] {
+      display: none;
+    }
+    #captureControls button {
+      padding: 8px 12px;
+      border: 0;
+      border-radius: 999px;
+      background: #222836;
+      color: white;
+      cursor: pointer;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    body.dark-mode #captureControls button {
+      background: #e6eaf2;
+      color: #222836;
+    }
+    #combinationTransformationToggle {
+      width: 100%;
+      margin: 0 0 6px;
+      padding: 6px 9px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: #657084;
+      text-align: left;
+      box-shadow: inset 0 0 0 1px rgba(70, 82, 104, .2);
+      cursor: pointer;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    #combinationTransformationToggle[aria-pressed="true"] {
+      background: #6b4de6;
+      color: white;
+    }
+    #combinationTransformationToggle[hidden] {
+      display: none;
+    }
     body.dark-mode .ui {
       background: rgba(22,27,38,.82);
       color: #e6eaf2;
@@ -58,12 +161,17 @@
       background: #e6eaf2;
       color: #222836;
     }
+    body.dark-mode .view-controls button[aria-pressed="true"] {
+      background: #8b72f0;
+      color: white;
+    }
 
     .part-panel {
       position: fixed;
       top: 18px;
       right: 18px;
-      width: min(250px, calc(100vw - 36px));
+      width: min(210px, calc(100vw - 36px));
+      box-sizing: border-box;
       max-height: calc(100vh - 36px);
       overflow: auto;
       z-index: 10;
@@ -86,6 +194,15 @@
     body.dark-mode .part-panel-toggle {
       background: #e6eaf2;
       color: #222836;
+    }
+    body.dark-mode #combinationTransformationToggle {
+      background: #8b72f0;
+      color: white;
+    }
+    body.dark-mode #combinationTransformationToggle[aria-pressed="false"] {
+      background: transparent;
+      color: #c1cada;
+      box-shadow: inset 0 0 0 1px rgba(220,230,250,.24);
     }
     body.dark-mode .part-slot {
       border-bottom-color: rgba(220,230,250,.16);
@@ -138,42 +255,82 @@
       accent-color: #2d6df6;
     }
     .part-slot {
-      margin-bottom: 6px;
-      padding: 6px 0;
+      margin-bottom: 4px;
+      padding: 4px 0;
       border-bottom: 1px solid rgba(40, 52, 70, 0.12);
     }
     .part-slot-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 4px;
+      gap: 6px;
+      margin-bottom: 2px;
       font-weight: 700;
     }
     .part-control-label {
-      display: block;
-      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 0;
+      font-size: 9px;
+      opacity: .75;
+    }
+    .heart-color-control {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 2px 0;
+      font-size: 9px;
+    }
+    .heart-color-control[hidden] {
+      display: none;
+    }
+    .heart-color-control input {
+      width: 25px;
+      height: 19px;
+      padding: 0;
+      border: 1px solid rgba(30,45,70,.2);
+      border-radius: 5px;
+      background: transparent;
+      cursor: pointer;
     }
     .part-slot select {
-      width: 100%;
-      margin: 0 0 4px;
-      padding: 7px 9px;
-      border: 1px solid rgba(30,45,70,.18);
-      border-radius: 9px;
+      flex: 1;
+      width: 0;
+      min-width: 0;
+      margin: 0;
+      padding: 4px 6px;
+      border: 1px solid rgba(30,45,70,.14);
+      border-radius: 6px;
       background: white;
       color: #1f2736;
-      font-size: 12px;
+      font-size: 11px;
     }
     .part-slot input[type="range"] {
-      width: 100%;
+      flex: 1;
+      min-width: 0;
       accent-color: #2d6df6;
       display: block;
+      height: 14px;
+      margin: 0;
     }
     @media (max-width: 600px) {
+      #captureControls {
+        top: 10px;
+        gap: 6px;
+      }
+      #captureControls button {
+        padding: 7px 10px;
+        font-size: 11px;
+      }
+      .view-controls button {
+        padding: 5px 8px;
+        font-size: 10px;
+      }
       .part-panel {
         top: 10px;
         right: 10px;
-        width: min(205px, calc(100vw - 20px));
+        width: min(175px, calc(100vw - 20px));
         max-height: calc(100vh - 20px);
         padding: 9px;
         font-size: 11px;
@@ -198,11 +355,20 @@
         padding: 4px 0;
       }
       .part-slot select {
-        padding: 5px 7px;
-        font-size: 11px;
+        padding: 4px 5px;
+        font-size: 10px;
       }
       .part-control-label {
-        margin-top: 2px;
+        gap: 4px;
+        font-size: 8px;
+      }
+      .heart-color-control {
+        gap: 5px;
+        font-size: 8px;
+      }
+      .heart-color-control input {
+        width: 22px;
+        height: 17px;
       }
     }
   </style>
@@ -218,20 +384,33 @@
 </head>
 <body>
   <div id="app"></div>
+  <div class="capture-frame" aria-hidden="true">
+    <img class="desktop-frame" src="img/desktop.png" alt="" />
+    <img class="phone-frame phone-top" src="img/phone-top.png" alt="" />
+    <img class="phone-frame phone-bottom" src="img/phone-bottom.png" alt="" />
+  </div>
 
   <div class="ui">
-    드래그: 회전 · 휠: 확대/축소<br/>
+    <span id="viewHint">드래그: 회전 · 휠: 확대/축소</span><br/>
     버튼 클릭: 조명 ON/OFF<br/>
     <button id="toggle">LIGHT ON</button>
     <button id="darkModeToggle" type="button" aria-pressed="false">다크모드 OFF</button>
-    <button id="chaTransformationReset" type="button" hidden>변신 해제하기</button>
+    <div class="view-controls">
+      <button id="resetView" type="button">시점 초기화</button>
+      <button id="frontModeToggle" type="button" aria-pressed="false">정면 조작 OFF</button>
+      <button id="captureModeToggle" type="button">캡쳐 모드</button>
+    </div>
   </div>
-
+  <div id="captureControls" hidden>
+    <button id="exitCaptureMode" type="button">모드 OFF</button>
+    <button id="takeCapture" type="button">화면 캡쳐</button>
+  </div>
   <div class="part-panel" id="partPanel">
     <div class="part-panel-header">
-      <h3 id="partPanelTitle">파트 커스터마이저</h3>
+      <h3 id="partPanelTitle">커스터마이저</h3>
       <button class="part-panel-toggle" id="partPanelToggle" type="button" aria-expanded="true" aria-controls="partPanelContent">접기</button>
     </div>
+    <button id="combinationTransformationToggle" type="button" aria-pressed="true" hidden>변신 ON</button>
     <div class="part-panel-content" id="partPanelContent">
       <label class="spindle-control"><input id="spindleToggle" type="checkbox" checked /> 중앙 축 표시</label>
     </div>
@@ -248,8 +427,12 @@
     scene.background = null;
 
     const camera = new THREE.PerspectiveCamera(34, innerWidth / innerHeight, 0.1, 100);
-    camera.position.set(5.4, 4.1, 8.6);
-    camera.lookAt(0, 1.15, 0);
+    const defaultCameraPosition = new THREE.Vector3(5.4, 4.1, 8.6);
+    const defaultCameraTarget = new THREE.Vector3(0, 1.0, 0);
+    const frontCameraPosition = new THREE.Vector3(0, 0.8, 8.5);
+    const frontCameraTarget = new THREE.Vector3(0, 0, 0);
+    camera.position.copy(defaultCameraPosition);
+    camera.lookAt(defaultCameraTarget);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -273,10 +456,12 @@
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.target.set(0, 1.0, 0);
+    controls.target.copy(defaultCameraTarget);
     controls.minDistance = 5.2;
     controls.maxDistance = 15;
     controls.maxPolarAngle = Math.PI * 0.82;
+    controls.saveState();
+    renderer.domElement.style.touchAction = 'none';
 
     // ---------- Lighting ----------
     const hemisphere = new THREE.HemisphereLight(0xffffff, 0x9ba6b6, 0.7);
@@ -560,9 +745,11 @@
     ]);
     const selectedPartFiles = new Map(slotConfigs.map((config) => [config.id, config.defaultFile]));
     const loadedPartModels = new Map();
+    const heartColors = new Map(slotConfigs.map((config) => [config.id, '#ff80a2']));
     const ribbonCombination = [...ribbonColors.keys()];
     const chaColorCombination = ['cha.html', 'kim.html', 'ryu.html'];
-    let chaTransformationDismissed = false;
+    let chaTransformationEnabled = true;
+    let ribbonTransformationEnabled = true;
     const chaCombinationColors = new Map([
       ['머리', 0x383b40],
       ['왼쪽 귀', 0x383b40],
@@ -594,6 +781,16 @@
           if (enabled) materials.forEach((material) => material.color.set(color));
           object.material = object.userData.combinationMaterialArray ? materials : materials[0];
         });
+      });
+    }
+
+    function applyHeartColor(model, color) {
+      const heart = model.getObjectByName('하트');
+      if (!heart) return;
+      heart.traverse((object) => {
+        if (!object.isMesh) return;
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        materials.forEach((material) => material.color?.set(color));
       });
     }
 
@@ -658,11 +855,19 @@
         && ribbonCombination.every((file) => selectedFiles.includes(file));
       const hasChaColorCombination = selectedFiles.length === chaColorCombination.length
         && chaColorCombination.every((file) => selectedFiles.includes(file));
-      if (!hasChaColorCombination) chaTransformationDismissed = false;
-      const isChaTransformationActive = hasChaColorCombination && !chaTransformationDismissed;
-      chaTransformationReset.hidden = !isChaTransformationActive;
+      if (!hasRibbonCombination) ribbonTransformationEnabled = true;
+      if (!hasChaColorCombination) chaTransformationEnabled = true;
+      const isRibbonTransformationActive = hasRibbonCombination && ribbonTransformationEnabled;
+      const isChaTransformationActive = hasChaColorCombination && chaTransformationEnabled;
+      const isTransformationAvailable = hasRibbonCombination || hasChaColorCombination;
+      const isTransformationEnabled = hasRibbonCombination
+        ? ribbonTransformationEnabled
+        : hasChaColorCombination && chaTransformationEnabled;
+      combinationTransformationToggle.hidden = !isTransformationAvailable;
+      combinationTransformationToggle.setAttribute('aria-pressed', String(isTransformationEnabled));
+      combinationTransformationToggle.textContent = `변신 ${isTransformationEnabled ? 'ON' : 'OFF'}`;
       loadedPartModels.forEach(({ file, ribbon, model }) => {
-        if (ribbon) ribbon.visible = hasRibbonCombination && ribbonCombination.includes(file);
+        if (ribbon) ribbon.visible = isRibbonTransformationActive && ribbonCombination.includes(file);
         if (file === 'cha.html') updateChaCombinationColors(model, isChaTransformationActive);
       });
     }
@@ -671,10 +876,16 @@
     const partPanelToggle = document.getElementById('partPanelToggle');
     const partPanelContent = document.getElementById('partPanelContent');
     const spindleToggle = document.getElementById('spindleToggle');
-    const chaTransformationReset = document.getElementById('chaTransformationReset');
+    const combinationTransformationToggle = document.getElementById('combinationTransformationToggle');
 
-    chaTransformationReset.addEventListener('click', () => {
-      chaTransformationDismissed = true;
+    combinationTransformationToggle.addEventListener('click', () => {
+      const selectedFiles = [...selectedPartFiles.values()].map((file) => file.split('/').pop());
+      if (ribbonCombination.every((file) => selectedFiles.includes(file))) {
+        ribbonTransformationEnabled = !ribbonTransformationEnabled;
+      }
+      if (chaColorCombination.every((file) => selectedFiles.includes(file))) {
+        chaTransformationEnabled = !chaTransformationEnabled;
+      }
       updateCombinationRibbons();
     });
 
@@ -696,7 +907,9 @@
 
       const header = document.createElement('div');
       header.className = 'part-slot-header';
-      header.innerHTML = `<span>${config.label}</span>`;
+      const slotLabel = document.createElement('span');
+      slotLabel.textContent = config.label;
+      header.appendChild(slotLabel);
 
       const select = document.createElement('select');
       const emptyOption = document.createElement('option');
@@ -710,6 +923,17 @@
         select.appendChild(option);
       });
       select.value = config.defaultFile;
+      header.appendChild(select);
+
+      const heartColorLabel = document.createElement('label');
+      heartColorLabel.className = 'heart-color-control';
+      heartColorLabel.textContent = '하트 색상';
+      heartColorLabel.hidden = select.value !== 'parts/heart.html';
+      const heartColorInput = document.createElement('input');
+      heartColorInput.type = 'color';
+      heartColorInput.value = heartColors.get(config.id);
+      heartColorInput.setAttribute('aria-label', `${config.label} 하트 색상`);
+      heartColorLabel.appendChild(heartColorInput);
 
       const positionRange = document.createElement('input');
       positionRange.type = 'range';
@@ -721,14 +945,14 @@
 
       const positionLabel = document.createElement('label');
       positionLabel.className = 'part-control-label';
-      positionLabel.textContent = '세로 위치';
+      positionLabel.textContent = '위치';
       positionLabel.appendChild(positionRange);
 
       const iframe = document.createElement('iframe');
       iframe.title = `${config.label} 파트`;
       iframe.hidden = true;
       wrapper.appendChild(header);
-      wrapper.appendChild(select);
+      wrapper.appendChild(heartColorLabel);
       wrapper.appendChild(positionLabel);
       wrapper.appendChild(iframe);
       partPanelContent.appendChild(wrapper);
@@ -779,6 +1003,7 @@
             }
           });
           applyFeatherClipping(model, event.data.clipping, event.data.edits?.__settings?.clipFeathers === true);
+          if (currentFile === 'heart.html') applyHeartColor(model, heartColors.get(config.id));
           const ribbonColor = ribbonColors.get(currentFile);
           const head = model.getObjectByName('머리');
           const ribbon = ribbonColor && head ? createForeheadRibbon(head, ribbonColor) : null;
@@ -795,12 +1020,20 @@
       select.addEventListener('change', () => {
         removeCurrentMesh();
         selectedPartFiles.set(config.id, select.value);
+        heartColorLabel.hidden = select.value !== 'parts/heart.html';
         updateCombinationRibbons();
         if (!select.value) {
           iframe.src = 'about:blank';
           return;
         }
         iframe.src = select.value;
+      });
+
+      heartColorInput.addEventListener('input', () => {
+        const color = heartColorInput.value;
+        heartColors.set(config.id, color);
+        const loadedPart = loadedPartModels.get(config.id);
+        if (loadedPart?.file === 'heart.html') applyHeartColor(loadedPart.model, color);
       });
 
       positionRange.addEventListener('input', () => {
@@ -983,6 +1216,127 @@
 
     document.getElementById('toggle').addEventListener('click', () => setLightState(!lightOn));
     const darkModeToggle = document.getElementById('darkModeToggle');
+    const resetViewButton = document.getElementById('resetView');
+    const frontModeToggle = document.getElementById('frontModeToggle');
+    const captureModeToggle = document.getElementById('captureModeToggle');
+    const captureControls = document.getElementById('captureControls');
+    const exitCaptureMode = document.getElementById('exitCaptureMode');
+    const takeCapture = document.getElementById('takeCapture');
+    const viewHint = document.getElementById('viewHint');
+    const lightstickBaseY = lightstick.position.y;
+    let frontMode = false;
+    let activeFrontPointerId = null;
+    let lastPointerX = 0;
+    let lastPointerY = 0;
+    let captureMode = false;
+
+    function setCaptureMode(enabled) {
+      captureMode = enabled;
+      document.body.classList.toggle('capture-mode', enabled);
+      captureControls.hidden = !enabled;
+    }
+
+    captureModeToggle.addEventListener('click', () => setCaptureMode(true));
+    exitCaptureMode.addEventListener('click', () => setCaptureMode(false));
+
+    async function captureScreen() {
+      const captureCanvas = document.createElement('canvas');
+      captureCanvas.width = innerWidth;
+      captureCanvas.height = innerHeight;
+      const context = captureCanvas.getContext('2d');
+      if (!context) throw new Error('캡쳐용 캔버스를 준비하지 못했습니다.');
+
+      const width = captureCanvas.width;
+      const height = captureCanvas.height;
+      const background = context.createRadialGradient(width * 0.5, height * 0.3, 0, width * 0.5, height * 0.3, Math.max(width, height) * 0.75);
+      if (darkModeOn) {
+        background.addColorStop(0, '#242a37');
+        background.addColorStop(0.48, '#11151e');
+        background.addColorStop(1, '#080a10');
+      } else {
+        background.addColorStop(0, '#f8fbff');
+        background.addColorStop(0.38, '#e8edf5');
+        background.addColorStop(1, '#cfd6e2');
+      }
+      context.fillStyle = background;
+      context.fillRect(0, 0, width, height);
+      renderer.render(scene, camera);
+      context.drawImage(renderer.domElement, 0, 0, width, height);
+
+      if (matchMedia('(max-width: 600px)').matches) {
+        const phoneTop = document.querySelector('.phone-top');
+        const phoneBottom = document.querySelector('.phone-bottom');
+        if (!phoneTop.complete || !phoneTop.naturalWidth || !phoneBottom.complete || !phoneBottom.naturalWidth) {
+          throw new Error('캡쳐 프레임 이미지를 불러오지 못했습니다.');
+        }
+        const topHeight = width * phoneTop.naturalHeight / phoneTop.naturalWidth;
+        const bottomHeight = width * phoneBottom.naturalHeight / phoneBottom.naturalWidth;
+        context.drawImage(phoneTop, 0, 0, width, topHeight);
+        context.drawImage(phoneBottom, 0, height - bottomHeight, width, bottomHeight);
+      } else {
+        const desktopFrame = document.querySelector('.desktop-frame');
+        if (!desktopFrame.complete || !desktopFrame.naturalWidth) {
+          throw new Error('캡쳐 프레임 이미지를 불러오지 못했습니다.');
+        }
+        context.drawImage(desktopFrame, 0, 0, width, height);
+      }
+
+      const blob = await new Promise((resolve, reject) => {
+        captureCanvas.toBlob((result) => {
+          if (result) resolve(result);
+          else reject(new Error('캡쳐 이미지를 생성하지 못했습니다.'));
+        }, 'image/png');
+      });
+      const downloadUrl = URL.createObjectURL(blob);
+      const download = document.createElement('a');
+      download.href = downloadUrl;
+      download.download = `lightstick-capture-${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+      document.body.appendChild(download);
+      download.click();
+      download.remove();
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    }
+
+    takeCapture.addEventListener('click', async () => {
+      captureControls.hidden = true;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      try {
+        await captureScreen();
+      } catch (error) {
+        console.error('화면 캡쳐에 실패했습니다.', error);
+        alert(`화면 캡쳐에 실패했습니다: ${error instanceof Error ? error.message : String(error)}`);
+      } finally {
+        if (captureMode) captureControls.hidden = false;
+      }
+    });
+
+    function setCameraView(front) {
+      controls.enabled = true;
+      controls.reset();
+      camera.position.copy(front ? frontCameraPosition : defaultCameraPosition);
+      controls.target.copy(front ? frontCameraTarget : defaultCameraTarget);
+      camera.lookAt(controls.target);
+      controls.update();
+      controls.enabled = !front;
+    }
+
+    resetViewButton.addEventListener('click', () => setCameraView(frontMode));
+    frontModeToggle.addEventListener('click', () => {
+      frontMode = !frontMode;
+      controls.enabled = !frontMode;
+      activeFrontPointerId = null;
+      if (frontMode) {
+        lightstick.position.y = lightstickBaseY;
+        lightstick.rotation.set(0, 0, 0);
+      }
+      setCameraView(frontMode);
+      frontModeToggle.textContent = `정면 조작 ${frontMode ? 'ON' : 'OFF'}`;
+      frontModeToggle.setAttribute('aria-pressed', String(frontMode));
+      viewHint.textContent = frontMode
+        ? '정면 조작: 좌우 회전 · 위아래 이동'
+        : '드래그: 회전 · 휠: 확대/축소';
+    });
+
     darkModeToggle.addEventListener('click', () => {
       darkModeOn = !darkModeOn;
       document.body.classList.toggle('dark-mode', darkModeOn);
@@ -1000,6 +1354,15 @@
     const pointer = new THREE.Vector2();
 
     renderer.domElement.addEventListener('pointerdown', (event) => {
+      if (frontMode) {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        activeFrontPointerId = event.pointerId;
+        lastPointerX = event.clientX;
+        lastPointerY = event.clientY;
+        renderer.domElement.setPointerCapture(event.pointerId);
+        return;
+      }
       const rect = renderer.domElement.getBoundingClientRect();
       pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -1007,6 +1370,33 @@
       const hits = raycaster.intersectObject(button, true);
       if (hits.length) setLightState(!lightOn);
     });
+
+    renderer.domElement.addEventListener('pointermove', (event) => {
+      if (!frontMode || event.pointerId !== activeFrontPointerId) return;
+      event.preventDefault();
+      const deltaX = event.clientX - lastPointerX;
+      const deltaY = event.clientY - lastPointerY;
+      lastPointerX = event.clientX;
+      lastPointerY = event.clientY;
+      lightstick.rotation.y += deltaX * 0.004;
+      const rect = renderer.domElement.getBoundingClientRect();
+      const worldUnitsPerPixel = (2 * frontCameraPosition.z * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) / rect.height * 0.3;
+      lightstick.position.y = THREE.MathUtils.clamp(
+        lightstick.position.y - deltaY * worldUnitsPerPixel,
+        lightstickBaseY - 1.5,
+        lightstickBaseY + 1.5
+      );
+    });
+
+    const finishFrontDrag = (event) => {
+      if (event.pointerId !== activeFrontPointerId) return;
+      activeFrontPointerId = null;
+      if (renderer.domElement.hasPointerCapture(event.pointerId)) {
+        renderer.domElement.releasePointerCapture(event.pointerId);
+      }
+    };
+    renderer.domElement.addEventListener('pointerup', finishFrontDrag);
+    renderer.domElement.addEventListener('pointercancel', finishFrontDrag);
 
     // ---------- Animation ----------
     const clock = new THREE.Clock();
@@ -1017,10 +1407,6 @@
       const t = clock.getElapsedTime();
 
       controls.update();
-
-      // subtle showroom motion
-      lightstick.rotation.y += 0.0012;
-      crystal.rotation.y = Math.PI/4 + Math.sin(t * 0.55) * 0.10;
 
       if (lightOn) {
         crystalMat.emissiveIntensity = 7 + Math.sin(t * 3.2) * 1;
