@@ -2,34 +2,113 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <title>류청우 파트</title>
+  <title>늑대 파트</title>
 </head>
 <body>
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.181.1/build/three.module.js';
 
 const sphere = new THREE.SphereGeometry(1, 40, 28);
-const glass = (color, options = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.04, transmission: 1, thickness: 1.2, ior: 1.45, clearcoat: 1, ...options });
+const glass = (color) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.04, transmission: 1, thickness: 1.2, ior: 1.45, clearcoat: 1 });
+const frost = (color) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.45, transmission: 0.5, thickness: 0.4 });
 const ink = new THREE.MeshStandardMaterial({ color: 0x2b1b1b, roughness: 0.3 });
+const solid = (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.35 });
 const ellipsoid = (w, h, d, material, x = 0, y = 0, z = 0, rz = 0) => {
   const mesh = new THREE.Mesh(sphere, material);
   mesh.scale.set(w, h, d); mesh.position.set(x, y, z); mesh.rotation.z = rz;
   return mesh;
 };
 const surface = (w, h, d, x, y) => d * Math.sqrt(Math.max(0, 1 - (x / w) ** 2 - (y / h) ** 2));
+const cone = (radius, height, material, x, y, z, rz) => {
+  const mesh = new THREE.Mesh(new THREE.ConeGeometry(radius, height, 4), material);
+  mesh.rotation.y = Math.PI / 4; mesh.scale.z = 0.45;
+  const group = new THREE.Group(); group.add(mesh); group.position.set(x, y, z); group.rotation.z = rz;
+  return group;
+};
 const model = new THREE.Group();
+const deletedParts = /* PART_DELETIONS_BEGIN */
+[
+  "무늬 오른쪽",
+  "무늬 가운데",
+  "늑대 파츠 20",
+  "늑대 파츠 19",
+  "늑대 파츠 13",
+  "늑대 파츠 12",
+  "코",
+  "늑대 파츠 16",
+  "늑대 파츠 18",
+  "늑대 파츠 17"
+]
+/* PART_DELETIONS_END */;
 const partEdits = /* PART_EDITS_BEGIN */
 {
+  "무늬 왼쪽": {
+    "position": [
+      -0.02,
+      0,
+      -0.08
+    ],
+    "size": 1,
+    "axisScale": [
+      1.12,
+      1,
+      1
+    ],
+    "rotation": [
+      -3,
+      6,
+      -2
+    ],
+    "visible": true
+  },
+  "오른쪽 귀 안쪽": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "size": 1,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true
+  },
+  "왼쪽 귀 안쪽": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "size": 1,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true
+  },
   "머리": {
     "position": [
       0,
-      0.1,
+      0,
       0
     ],
-    "size": 1.08,
+    "size": 1,
     "axisScale": [
       1,
-      0.8,
+      1,
       1
     ],
     "rotation": [
@@ -42,8 +121,8 @@ const partEdits = /* PART_EDITS_BEGIN */
   "왼쪽 눈": {
     "position": [
       0,
-      0,
-      0.06
+      -0.18,
+      -0.06
     ],
     "size": 1,
     "axisScale": [
@@ -61,8 +140,8 @@ const partEdits = /* PART_EDITS_BEGIN */
   "오른쪽 눈": {
     "position": [
       0,
-      0,
-      0.06
+      -0.22,
+      -0.12
     ],
     "size": 1,
     "axisScale": [
@@ -77,16 +156,73 @@ const partEdits = /* PART_EDITS_BEGIN */
     ],
     "visible": true
   },
-  "부리": {
+  "늑대 파츠 14": {
+    "position": [
+      -0.04,
+      -0.04,
+      -0.01
+    ],
+    "size": 1.36,
+    "axisScale": [
+      1,
+      1.43,
+      1.48
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true
+  },
+  "늑대 파츠 15": {
+    "position": [
+      0.04,
+      -0.03,
+      -0.01
+    ],
+    "size": 1.36,
+    "axisScale": [
+      1,
+      1.43,
+      1.48
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true
+  },
+  "오른쪽 귀": {
+    "position": [
+      -0.02,
+      0,
+      -0.08
+    ],
+    "size": 1,
+    "axisScale": [
+      1.12,
+      1,
+      1
+    ],
+    "rotation": [
+      -6,
+      4,
+      0
+    ],
+    "visible": true
+  },
+  "왼쪽 귀": {
     "position": [
       0,
       0,
-      0.13
+      0
     ],
-    "size": 0.76,
+    "size": 1,
     "axisScale": [
-      0.81,
-      0.68,
+      1,
+      1,
       1
     ],
     "rotation": [
@@ -96,186 +232,109 @@ const partEdits = /* PART_EDITS_BEGIN */
     ],
     "visible": true
   },
-  "__settings": {
-    "clipFeathers": false
-  },
-  "깃털 1": {
+  "왼쪽 눈썹": {
     "position": [
-      0,
-      0.1,
-      -0.03
+      -0.15,
+      -0.15,
+      -0.08
     ],
-    "size": 1.27,
+    "size": 1,
     "axisScale": [
-      0.91,
-      0.6,
-      0.88
+      1.21,
+      1,
+      1
     ],
     "rotation": [
       0,
-      0,
-      0
+      -28,
+      11
     ],
-    "visible": true,
-    "color": "#ffffff"
+    "visible": true
   },
-  "깃털 2": {
+  "오른쪽 눈썹": {
     "position": [
-      -0.05,
-      0.1,
-      -0.01
+      0.15,
+      -0.13,
+      -0.08
     ],
-    "size": 1.27,
+    "size": 1,
     "axisScale": [
-      0.91,
-      0.6,
-      0.88
+      1,
+      1,
+      1
     ],
     "rotation": [
       0,
-      0,
-      0
+      28,
+      -11
     ],
-    "visible": true,
-    "color": "#ffffff"
-  },
-  "깃털 3": {
-    "position": [
-      0,
-      0.1,
-      -0.03
-    ],
-    "size": 1.27,
-    "axisScale": [
-      0.91,
-      0.6,
-      0.88
-    ],
-    "rotation": [
-      0,
-      0,
-      0
-    ],
-    "visible": true,
-    "color": "#ffffff"
-  },
-  "깃털 4": {
-    "position": [
-      0,
-      0.1,
-      -0.03
-    ],
-    "size": 1.27,
-    "axisScale": [
-      0.91,
-      0.6,
-      0.88
-    ],
-    "rotation": [
-      0,
-      0,
-      0
-    ],
-    "visible": true,
-    "color": "#ffffff"
-  },
-  "깃털 5": {
-    "position": [
-      0,
-      0.1,
-      -0.03
-    ],
-    "size": 1.27,
-    "axisScale": [
-      0.91,
-      0.6,
-      0.88
-    ],
-    "rotation": [
-      0,
-      0,
-      0
-    ],
-    "visible": true,
-    "color": "#ffffff"
-  },
-  "깃털 6": {
-    "position": [
-      0,
-      0.1,
-      -0.03
-    ],
-    "size": 1.27,
-    "axisScale": [
-      0.91,
-      0.6,
-      0.88
-    ],
-    "rotation": [
-      0,
-      0,
-      0
-    ],
-    "visible": true,
-    "color": "#ffffff"
-  },
-  "깃털 7": {
-    "position": [
-      0,
-      0.1,
-      -0.03
-    ],
-    "size": 1.27,
-    "axisScale": [
-      0.91,
-      0.6,
-      0.88
-    ],
-    "rotation": [
-      0,
-      0,
-      0
-    ],
-    "visible": true,
-    "color": "#ffffff"
+    "visible": true
   }
 }
 /* PART_EDITS_END */;
-const headRadius = 0.9;
-const headGroup = new THREE.Group();
-const headMaterial = glass(0xffffff);
-const headCylinder = new THREE.Mesh(new THREE.CylinderGeometry(headRadius, headRadius, 1.2, 40), headMaterial);
-headCylinder.position.y = -0.45;
-headGroup.add(headCylinder);
-const headDome = new THREE.Mesh(new THREE.SphereGeometry(headRadius, 40, 24, 0, Math.PI * 2, 0, Math.PI / 2), headMaterial);
-headDome.position.y = 0.15;
-headGroup.add(headDome);
-model.add(headGroup);
-const featherColors = [0xd9dfe6, 0xe3e8ed, 0xebeff3, 0xf2f4f6, 0xebeff3, 0xe3e8ed, 0xd9dfe6];
-for (let i = 0; i < 7; i++) {
-  const feather = ellipsoid(0.32, 0.55, 0.12, new THREE.MeshStandardMaterial({ color: featherColors[i], roughness: 0.42 }));
-  const angle = (i / 7) * Math.PI * 2;
-  const radius = 0.84;
-  feather.position.set(Math.sin(angle) * radius, -0.82, Math.cos(angle) * radius);
-  feather.rotation.y = angle;
-  model.add(feather);
+const fur = solid(0x87919b);
+const furLight = solid(0xc5cbd0);
+const furDark = solid(0x4b535d);
+const innerEar = solid(0xc77f83);
+const eyeMat = solid(0x20252c);
+const noseMat = solid(0x252a30);
+const muzzleMat = solid(0xe0e2e3);
+
+// Broad, slightly angular wolf head and lower cheeks.
+model.add(ellipsoid(1.08, 0.92, 0.82, fur, 0, 0, 0));
+model.add(ellipsoid(0.72, 0.48, 0.68, furLight, 0, -0.43, 0.26));
+// Pointed ears, set wide apart and angled outward.
+for (const side of [-1, 1]) {
+  const ear = cone(0.43, 0.95, fur, side * 0.69, 0.86, -0.02, -side * 0.22);
+  ear.scale.set(1.0, 1.0, 0.85);
+  model.add(ear);
+  const inner = cone(0.23, 0.60, innerEar, side * 0.69, 0.87, 0.12, -side * 0.22);
+  inner.scale.set(0.9, 1.0, 0.55);
+  model.add(inner);
+}
+// Forehead tufts create a more wolf-like silhouette.
+model.add(cone(0.29, 0.52, furLight, -0.22, 0.83, 0.35, -0.20));
+model.add(cone(0.29, 0.52, furLight,  0.22, 0.83, 0.35,  0.20));
+// Tapered muzzle: overlapping ellipsoids lead to a dark nose at the tip.
+model.add(ellipsoid(0.43, 0.30, 0.58, muzzleMat, 0, -0.22, 0.67, Math.PI * 0.02));
+model.add(ellipsoid(0.20, 0.16, 0.24, noseMat, 0, -0.14, 1.14));
+// Mouth line and two small lower muzzle marks.
+model.add(ellipsoid(0.025, 0.16, 0.025, furDark, 0, -0.40, 1.00));
+for (const side of [-1, 1]) {
+  model.add(ellipsoid(0.13, 0.09, 0.04, furLight, side * 0.17, -0.27, 1.02));
+}
+// Dark, narrow eyes set slightly toward the sides of the face.
+for (const side of [-1, 1]) {
+  const eye = new THREE.Group();
+  eye.add(ellipsoid(0.13, 0.075, 0.055, eyeMat, 0, 0, 0));
+  eye.position.set(side * 0.43, 0.04, 0.70);
+  eye.rotation.z = -side * 0.16;
+  model.add(eye);
+}
+// Three pale forehead markings and subtle cheek tufts.
+for (const x of [-0.22, 0, 0.22]) {
+  model.add(ellipsoid(0.075, 0.23, 0.035, furLight, x, 0.47, 0.70, x * 0.45));
 }
 for (const side of [-1, 1]) {
-  const x = side * 0.45, y = 0.12, eye = new THREE.Group();
-  eye.add(ellipsoid(0.15, 0.105, 0.06, ink));
-  eye.position.set(x, y, Math.max(0.15, surface(1, 1.2, 0.9, x, y) * 0.88)); eye.scale.setScalar(1.8); model.add(eye);
+  model.add(cone(0.19, 0.34, furLight, side * 0.72, -0.35, 0.37, -side * 0.65));
 }
-model.add(ellipsoid(0.26, 0.32, 0.14, glass(0xffb81c, { transmission: 0.6 }), 0, -0.2, 0.8));
-const componentNames = ['머리', '깃털 1', '깃털 2', '깃털 3', '깃털 4', '깃털 5', '깃털 6', '깃털 7', '왼쪽 눈', '오른쪽 눈', '부리'];
-model.children.forEach((child, index) => { child.name = componentNames[index]; });
+const componentNames = [
+  '머리', '왼쪽 귀', '왼쪽 귀 안쪽', '오른쪽 귀', '오른쪽 귀 안쪽',
+  '무늬 왼쪽', '무늬 가운데', '무늬 오른쪽', '왼쪽 눈', '오른쪽 눈', '코'
+];
+model.children.forEach((child, index) => { child.name = componentNames[index] || `늑대 파츠 ${index + 1}`; });
+for (const name of deletedParts) {
+  const child = model.getObjectByName(name);
+  if (child?.parent === model) model.remove(child);
+  delete partEdits[name];
+}
+for (const side of [-1, 1]) {
+  const eyebrow = ellipsoid(0.15, 0.03, 0.04, eyeMat, side * 0.43, 0.25, 0.75, side * 0.12);
+  eyebrow.name = side < 0 ? '왼쪽 눈썹' : '오른쪽 눈썹';
+  model.add(eyebrow);
+}
 model.updateMatrixWorld(true);
-parent.postMessage({
-  type: 'lightstick-part',
-  file: window.__PART_FILE || window.name || new URLSearchParams(location.search).get('partFile') || location.pathname.split('/').pop(),
-  object: model.toJSON(),
-  edits: partEdits,
-  clipping: { cylinderRadius: 0.9, featherRadius: 0.84, featherDepth: 0.12 }
-}, '*');
+parent.postMessage({ type: 'lightstick-part', file: window.__PART_FILE || window.name || new URLSearchParams(location.search).get('partFile') || location.pathname.split('/').pop(), object: model.toJSON(), edits: partEdits }, '*');
 </script>
 </body>
 </html>

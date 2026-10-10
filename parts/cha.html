@@ -26,27 +26,11 @@ const cone = (radius, height, material, x, y, z, rz) => {
   return group;
 };
 const model = new THREE.Group();
+const deletedParts = /* PART_DELETIONS_BEGIN */
+[]
+/* PART_DELETIONS_END */;
 const partEdits = /* PART_EDITS_BEGIN */
 {
-  "코": {
-    "position": [
-      0,
-      0,
-      0
-    ],
-    "size": 1,
-    "axisScale": [
-      1,
-      1,
-      1
-    ],
-    "rotation": [
-      0,
-      0,
-      0
-    ],
-    "visible": false
-  },
   "무늬 왼쪽": {
     "position": [
       0,
@@ -150,6 +134,25 @@ const partEdits = /* PART_EDITS_BEGIN */
     ],
     "size": 1,
     "axisScale": [
+      0.96,
+      1,
+      1
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true
+  },
+  "왼쪽 눈": {
+    "position": [
+      0.04,
+      0,
+      0.01
+    ],
+    "size": 1,
+    "axisScale": [
       1,
       1,
       1
@@ -157,6 +160,63 @@ const partEdits = /* PART_EDITS_BEGIN */
     "rotation": [
       0,
       0,
+      0
+    ],
+    "visible": true
+  },
+  "오른쪽 눈": {
+    "position": [
+      -0.04,
+      0,
+      0.01
+    ],
+    "size": 1,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true
+  },
+  "왼쪽 눈썹": {
+    "position": [
+      -0.13,
+      -0.08,
+      -0.03
+    ],
+    "size": 1.65,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      0,
+      -25,
+      0
+    ],
+    "visible": true
+  },
+  "오른쪽 눈썹": {
+    "position": [
+      0.13,
+      -0.08,
+      -0.03
+    ],
+    "size": 1.65,
+    "axisScale": [
+      1,
+      1,
+      1
+    ],
+    "rotation": [
+      0,
+      25,
       0
     ],
     "visible": true
@@ -177,6 +237,17 @@ for (const side of [-1, 1]) {
 model.add(ellipsoid(0.05, 0.035, 0.04, ink, 0, -0.3, surface(1.15, 0.95, 0.9, 0, -0.3) * 0.9));
 const componentNames = ['머리', '왼쪽 귀', '왼쪽 귀 안쪽', '오른쪽 귀', '오른쪽 귀 안쪽', '무늬 왼쪽', '무늬 가운데', '무늬 오른쪽', '왼쪽 눈', '오른쪽 눈', '코'];
 model.children.forEach((child, index) => { child.name = componentNames[index]; });
+for (const name of deletedParts) {
+  const child = model.getObjectByName(name);
+  if (child?.parent === model) model.remove(child);
+  delete partEdits[name];
+}
+for (const side of [-1, 1]) {
+  const x = side * 0.45, y = 0.12;
+  const eyebrow = ellipsoid(0.12, 0.025, 0.035, ink, x, y, surface(1.15, 0.95, 0.9, x, y) * 0.88 + 0.04, side * 0.12);
+  eyebrow.name = side < 0 ? '왼쪽 눈썹' : '오른쪽 눈썹';
+  model.add(eyebrow);
+}
 model.updateMatrixWorld(true);
 parent.postMessage({ type: 'lightstick-part', file: window.__PART_FILE || window.name || new URLSearchParams(location.search).get('partFile') || location.pathname.split('/').pop(), object: model.toJSON(), edits: partEdits }, '*');
 </script>

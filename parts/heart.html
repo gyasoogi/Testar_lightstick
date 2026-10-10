@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>하트 파트</title>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.181.1/build/three.module.js';
+
+const model = new THREE.Group();
+const deletedParts = /* PART_DELETIONS_BEGIN */
+[
+  "왼쪽 반짝임",
+  "오른쪽 반짝임"
+]
+/* PART_DELETIONS_END */;
+const partEdits = /* PART_EDITS_BEGIN */
+{
+  "하트": {
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "size": 1,
+    "axisScale": [
+      1,
+      1,
+      1.87
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
+    "visible": true,
+    "color": "#ff80a2"
+  }
+}
+/* PART_EDITS_END */;
+
+const heartShape = new THREE.Shape();
+heartShape.moveTo(0, -0.92);
+heartShape.bezierCurveTo(-0.12, -0.82, -1.18, -0.08, -1.18, 0.5);
+heartShape.bezierCurveTo(-1.18, 1.2, -0.34, 1.35, 0, 0.72);
+heartShape.bezierCurveTo(0.34, 1.35, 1.18, 1.2, 1.18, 0.5);
+heartShape.bezierCurveTo(1.18, -0.08, 0.12, -0.82, 0, -0.92);
+
+function createPuffyHeartGeometry(shape) {
+  const outline = shape.getPoints(256);
+  const center = new THREE.Vector2(0, 0);
+  const radialSegments = 32;
+  const angularSegments = 192;
+  const boundaryRadius = (angle) => {
+    const direction = new THREE.Vector2(Math.cos(angle), Math.sin(angle));
+    let nearest = Infinity;
+    for (let index = 0; index < outline.length - 1; index += 1) {
+      const a = outline[index].clone().sub(center);
+      const edge = outline[index + 1].clone().sub(outline[index]);
+      const denominator = direction.x * edge.y - direction.y * edge.x;
+      if (Math.abs(denominator) < 1e-8) continue;
+      const distance = (a.x * edge.y - a.y * edge.x) / denominator;
+      const alongEdge = (a.x * direction.y - a.y * direction.x) / denominator;
+      if (distance > 0 && alongEdge >= 0 && alongEdge <= 1) nearest = Math.min(nearest, distance);
+    }
+    if (!Number.isFinite(nearest)) throw new Error('하트 외곽을 만들지 못했습니다.');
+    return nearest;
+  };
+  const positions = [];
+  const indices = [];
+  const addSurface = (front) => {
+    const centerIndex = positions.length / 3;
+    positions.push(center.x, center.y, front ? 0.42 : -0.42);
+    const firstRing = positions.length / 3;
+    for (let ring = 1; ring <= radialSegments; ring += 1) {
+      const radiusRatio = ring / radialSegments;
+      for (let segment = 0; segment < angularSegments; segment += 1) {
+        const angle = (segment / angularSegments) * Math.PI * 2;
+        const radius = boundaryRadius(angle) * radiusRatio;
+        const x = center.x + Math.cos(angle) * radius;
+        const y = center.y + Math.sin(angle) * radius;
+        const bulge = Math.sqrt(Math.max(0, 1 - radiusRatio * radiusRatio));
+        positions.push(x, y, (front ? 1 : -1) * (0.08 + 0.34 * bulge));
+      }
+    }
+    const ringIndex = (ring, segment) => firstRing + (ring - 1) * angularSegments + (segment % angularSegments);
+    for (let segment = 0; segment < angularSegments; segment += 1) {
+      const next = (segment + 1) % angularSegments;
+      if (front) indices.push(centerIndex, ringIndex(1, segment), ringIndex(1, next));
+      else indices.push(centerIndex, ringIndex(1, next), ringIndex(1, segment));
+    }
+    for (let ring = 1; ring < radialSegments; ring += 1) {
+      for (let segment = 0; segment < angularSegments; segment += 1) {
+        const next = (segment + 1) % angularSegments;
+        const inner = ringIndex(ring, segment);
+        const outer = ringIndex(ring + 1, segment);
+        const outerNext = ringIndex(ring + 1, next);
+        const innerNext = ringIndex(ring, next);
+        if (front) indices.push(inner, outer, outerNext, inner, outerNext, innerNext);
+        else indices.push(inner, outerNext, outer, inner, innerNext, outerNext);
+      }
+    }
+    return {
+      boundaryStart: ringIndex(radialSegments, 0),
+      boundaryEnd: positions.length / 3
+    };
+  };
+  const front = addSurface(true);
+  const back = addSurface(false);
+  for (let segment = 0; segment < angularSegments; segment += 1) {
+    const next = (segment + 1) % angularSegments;
+    const frontA = front.boundaryStart + segment;
+    const frontB = front.boundaryStart + next;
+    const backA = back.boundaryStart + segment;
+    const backB = back.boundaryStart + next;
+    indices.push(frontA, backA, backB, frontA, backB, frontB);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+const heartGeometry = createPuffyHeartGeometry(heartShape);
+model.add(new THREE.Mesh(
+  heartGeometry,
+  new THREE.MeshPhysicalMaterial({
+    color: 0xf0527d,
+    roughness: 0.16,
+    metalness: 0.02,
+    clearcoat: 1,
+    clearcoatRoughness: 0.08
+  })
+));
+
+const shineMaterial = new THREE.MeshBasicMaterial({ color: 0xffd8e2 });
+const shineGeometry = new THREE.SphereGeometry(1, 20, 14);
+const shineLeft = new THREE.Mesh(shineGeometry, shineMaterial);
+shineLeft.name = '왼쪽 반짝임';
+shineLeft.scale.set(0.075, 0.15, 0.025);
+shineLeft.position.set(-0.43, 0.54, 0.2);
+shineLeft.rotation.z = -0.35;
+model.add(shineLeft);
+
+const shineRight = new THREE.Mesh(shineGeometry, shineMaterial);
+shineRight.name = '오른쪽 반짝임';
+shineRight.scale.set(0.045, 0.09, 0.02);
+shineRight.position.set(-0.2, 0.68, 0.2);
+shineRight.rotation.z = -0.35;
+model.add(shineRight);
+
+const componentNames = ['하트', '왼쪽 반짝임', '오른쪽 반짝임'];
+model.children.forEach((child, index) => { child.name = componentNames[index]; });
+for (const name of deletedParts) {
+  const child = model.getObjectByName(name);
+  if (child?.parent === model) model.remove(child);
+  delete partEdits[name];
+}
+model.updateMatrixWorld(true);
+parent.postMessage({
+  type: 'lightstick-part',
+  file: window.__PART_FILE || window.name || new URLSearchParams(location.search).get('partFile') || location.pathname.split('/').pop(),
+  object: model.toJSON(),
+  edits: partEdits
+}, '*');
+</script>
+</body>
+</html>

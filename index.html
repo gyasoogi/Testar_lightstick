@@ -13,6 +13,9 @@
         radial-gradient(circle at 50% 30%, #f8fbff 0%, #e8edf5 38%, #cfd6e2 100%);
       font-family: Arial, sans-serif;
     }
+    body.dark-mode {
+      background: radial-gradient(circle at 50% 30%, #242a37 0%, #11151e 48%, #080a10 100%);
+    }
     #app {
       width: 100%;
       height: 100%;
@@ -43,6 +46,18 @@
       cursor: pointer;
       font-weight: 700;
     }
+    .ui button + button {
+      margin-left: 5px;
+    }
+    body.dark-mode .ui {
+      background: rgba(22,27,38,.82);
+      color: #e6eaf2;
+      box-shadow: 0 10px 30px rgba(0,0,0,.3);
+    }
+    body.dark-mode .ui button {
+      background: #e6eaf2;
+      color: #222836;
+    }
 
     .part-panel {
       position: fixed;
@@ -59,6 +74,26 @@
       box-shadow: 0 12px 28px rgba(30,45,70,.12);
       color: #1f2736;
       font-size: 12px;
+    }
+    body.dark-mode .part-panel {
+      background: rgba(24,29,40,.88);
+      color: #e6eaf2;
+      box-shadow: 0 12px 28px rgba(0,0,0,.35);
+    }
+    body.dark-mode .part-panel h3 {
+      color: #f0f3fa;
+    }
+    body.dark-mode .part-panel-toggle {
+      background: #e6eaf2;
+      color: #222836;
+    }
+    body.dark-mode .part-slot {
+      border-bottom-color: rgba(220,230,250,.16);
+    }
+    body.dark-mode .part-slot select {
+      border-color: rgba(220,230,250,.22);
+      background: #303747;
+      color: #f0f3fa;
     }
     .part-panel.collapsed {
       width: auto;
@@ -89,6 +124,18 @@
     }
     .part-panel-content {
       margin-top: 12px;
+    }
+    .spindle-control {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .spindle-control input {
+      margin: 0;
+      accent-color: #2d6df6;
     }
     .part-slot {
       margin-bottom: 6px;
@@ -143,6 +190,9 @@
       .part-panel-content {
         margin-top: 8px;
       }
+      .spindle-control {
+        margin-bottom: 7px;
+      }
       .part-slot {
         margin-bottom: 4px;
         padding: 4px 0;
@@ -173,6 +223,7 @@
     드래그: 회전 · 휠: 확대/축소<br/>
     버튼 클릭: 조명 ON/OFF<br/>
     <button id="toggle">LIGHT ON</button>
+    <button id="darkModeToggle" type="button" aria-pressed="false">다크모드 OFF</button>
   </div>
 
   <div class="part-panel" id="partPanel">
@@ -180,7 +231,9 @@
       <h3 id="partPanelTitle">파트 커스터마이저</h3>
       <button class="part-panel-toggle" id="partPanelToggle" type="button" aria-expanded="true" aria-controls="partPanelContent">접기</button>
     </div>
-    <div class="part-panel-content" id="partPanelContent"></div>
+    <div class="part-panel-content" id="partPanelContent">
+      <label class="spindle-control"><input id="spindleToggle" type="checkbox" checked /> 중앙 축 표시</label>
+    </div>
   </div>
 
   <script type="module">
@@ -208,6 +261,11 @@
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
 
+    const reflectionRandom = (seed) => {
+      const value = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+      return value - Math.floor(value);
+    };
+
     const environmentGenerator = new THREE.PMREMGenerator(renderer);
     scene.environment = environmentGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
     environmentGenerator.dispose();
@@ -220,7 +278,8 @@
     controls.maxPolarAngle = Math.PI * 0.82;
 
     // ---------- Lighting ----------
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x9ba6b6, 0.7));
+    const hemisphere = new THREE.HemisphereLight(0xffffff, 0x9ba6b6, 0.7);
+    scene.add(hemisphere);
 
     const key = new THREE.DirectionalLight(0xffffff, 1.2);
     key.position.set(4, 7, 6);
@@ -270,18 +329,17 @@
     });
 
     const crystalMat = new THREE.MeshPhysicalMaterial({
-      color: 0xf5f1ff,
-      transmission: 0.58,
-      transparent: true,
-      opacity: 0.68,
-      roughness: 0.03,
-      metalness: 0.08,
-      emissive: 0x9aabff,
+      color: 0xffffff,
+      vertexColors: true,
+      transmission: 0.12,
+      roughness: 0.08,
+      metalness: 0,
+      emissive: 0xffffff,
       emissiveIntensity: 0,
       clearcoat: 1,
-      clearcoatRoughness: 0.03,
-      ior: 1.62,
-      thickness: 1.0
+      clearcoatRoughness: 0.02,
+      ior: 2.4,
+      reflectivity: 1
     });
 
     const glowCanvas = document.createElement('canvas');
@@ -303,6 +361,34 @@
       opacity: 0,
       blending: THREE.AdditiveBlending,
       depthWrite: false
+    });
+    const reflectionColors = [0xffe7a6, 0xc7efff, 0xffc9e8, 0xffffff];
+    const reflections = Array.from({ length: 42 }, (_, index) => {
+      const azimuth = reflectionRandom(index + 1) * Math.PI * 2;
+      const vertical = reflectionRandom(index + 91) * 2 - 1;
+      const horizontal = Math.sqrt(1 - vertical * vertical);
+      const radius = 4.2 + reflectionRandom(index + 181) * 5.8;
+      const reflection = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: crystalAuraMat.map,
+        color: reflectionColors[Math.floor(reflectionRandom(index + 271) * reflectionColors.length)],
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false
+      }));
+      const size = 0.12 + reflectionRandom(index + 541) * 0.22;
+      reflection.scale.set(size, size, 1);
+      reflection.userData.baseSize = size;
+      reflection.position.set(
+        Math.cos(azimuth) * horizontal * radius,
+        1.7 + vertical * radius * 0.9,
+        Math.sin(azimuth) * horizontal * radius
+      );
+      reflection.userData.phase = reflectionRandom(index + 361) * Math.PI * 2;
+      reflection.userData.baseOpacity = 0.55 + reflectionRandom(index + 451) * 0.45;
+      scene.add(reflection);
+      return reflection;
     });
 
     // ---------- Helpers ----------
@@ -372,10 +458,13 @@
     chamber.add(mesh(new THREE.CylinderGeometry(0.53,0.53,0.15,64), whiteMat, {y:-0.53}));
     chamber.add(mesh(new THREE.CylinderGeometry(0.54,0.54,0.15,64), whiteMat, {y:1.57}));
 
-    // 내부 받침은 낮게 유지해서 사과 하단과 닿지 않게 함
-    const innerSupport = mesh(new THREE.ConeGeometry(0.22, 0.26, 3), whiteMat, {y:-0.18, rz:0.0});
-    innerSupport.rotation.y = Math.PI / 4;
-    chamber.add(innerSupport);
+    const partSpindleMat = new THREE.MeshStandardMaterial({
+      color: 0x858b95,
+      roughness: 0.28,
+      metalness: 0.72
+    });
+    const partSpindle = mesh(new THREE.CylinderGeometry(0.035, 0.035, 2.1, 24), partSpindleMat, {y:0.52});
+    chamber.add(partSpindle);
 
     // ---------- Custom part slots ----------
     const partOptions = [
@@ -386,7 +475,8 @@
       { label: '김래빈', value: 'parts/kim.html' },
       { label: '박문대', value: 'parts/moon.html' },
       { label: '류청우', value: 'parts/ryu.html' },
-      { label: '이세진', value: 'parts/sejin.html' }
+      { label: '이세진', value: 'parts/sejin.html' },
+      { label: '하트', value: 'parts/heart.html' }
     ];
 
     function applyPartEdits(model, edits = {}) {
@@ -458,14 +548,81 @@
     }
 
     const slotConfigs = [
-      { id: 'top', label: '상단', defaultFile: 'parts/apple.html', y: 1.02, scale: 0.72 },
-      { id: 'middle', label: '중간', defaultFile: 'parts/ahyeon.html', y: 0.18, scale: 0.7 },
-      { id: 'bottom', label: '하단', defaultFile: 'parts/kim.html', y: -0.42, scale: 0.72 }
+      { id: 'top', label: '상단', defaultFile: 'parts/apple.html', y: 0.87, scale: 0.7 },
+      { id: 'middle', label: '중간', defaultFile: 'parts/moon.html', y: 0.28, scale: 0.7 },
+      { id: 'bottom', label: '하단', defaultFile: 'parts/apple.html', y: -0.32, scale: 0.7 }
     ];
+    const ribbonColors = new Map([
+      ['ahyeon.html', 0xa777e8],
+      ['bea.html', 0x3987ff],
+      ['moon.html', 0xff72ad]
+    ]);
+    const selectedPartFiles = new Map(slotConfigs.map((config) => [config.id, config.defaultFile]));
+    const loadedPartModels = new Map();
+    const ribbonCombination = [...ribbonColors.keys()];
+
+    function createForeheadRibbon(head, color) {
+      const ribbon = new THREE.Group();
+      const ribbonMaterial = new THREE.MeshPhysicalMaterial({
+        color,
+        roughness: 0.28,
+        metalness: 0.04,
+        clearcoat: 0.8,
+        clearcoatRoughness: 0.18,
+        side: THREE.DoubleSide
+      });
+      const loopShape = new THREE.Shape();
+      loopShape.moveTo(0, 0);
+      loopShape.quadraticCurveTo(-0.05, 0.19, -0.29, 0.22);
+      loopShape.quadraticCurveTo(-0.43, 0.16, -0.37, 0);
+      loopShape.quadraticCurveTo(-0.43, -0.16, -0.29, -0.22);
+      loopShape.quadraticCurveTo(-0.05, -0.19, 0, 0);
+      const loopGeometry = new THREE.ExtrudeGeometry(loopShape, {
+        depth: 0.045,
+        bevelEnabled: true,
+        bevelSegments: 4,
+        bevelSize: 0.025,
+        bevelThickness: 0.035,
+        steps: 1,
+        curveSegments: 12
+      });
+      const leftLoop = new THREE.Mesh(loopGeometry, ribbonMaterial);
+      leftLoop.position.z = -0.045;
+      ribbon.add(leftLoop);
+
+      const rightLoop = new THREE.Mesh(loopGeometry, ribbonMaterial);
+      rightLoop.position.z = -0.045;
+      rightLoop.scale.x = -1;
+      ribbon.add(rightLoop);
+
+      const knot = new THREE.Mesh(new THREE.SphereGeometry(0.065, 14, 10), ribbonMaterial);
+      knot.position.z = 0.045;
+      knot.scale.set(1.05, 1.1, 0.85);
+      ribbon.add(knot);
+      ribbon.scale.setScalar(1.45);
+      ribbon.position.set(0, 0.56, 0.98);
+      ribbon.visible = false;
+      head.add(ribbon);
+      return ribbon;
+    }
+
+    function updateCombinationRibbons() {
+      const selectedFiles = [...selectedPartFiles.values()].map((file) => file.split('/').pop());
+      const hasRibbonCombination = selectedFiles.length === ribbonCombination.length
+        && ribbonCombination.every((file) => selectedFiles.includes(file));
+      loadedPartModels.forEach(({ file, ribbon }) => {
+        if (ribbon) ribbon.visible = hasRibbonCombination && ribbonCombination.includes(file);
+      });
+    }
 
     const partPanel = document.getElementById('partPanel');
     const partPanelToggle = document.getElementById('partPanelToggle');
     const partPanelContent = document.getElementById('partPanelContent');
+    const spindleToggle = document.getElementById('spindleToggle');
+
+    spindleToggle.addEventListener('change', () => {
+      partSpindle.visible = spindleToggle.checked;
+    });
 
     partPanelToggle.addEventListener('click', () => {
       const isExpanded = partPanelToggle.getAttribute('aria-expanded') === 'true';
@@ -484,6 +641,10 @@
       header.innerHTML = `<span>${config.label}</span>`;
 
       const select = document.createElement('select');
+      const emptyOption = document.createElement('option');
+      emptyOption.value = '';
+      emptyOption.textContent = '선택 안 함';
+      select.appendChild(emptyOption);
       partOptions.forEach((item) => {
         const option = document.createElement('option');
         option.value = item.value;
@@ -491,19 +652,6 @@
         select.appendChild(option);
       });
       select.value = config.defaultFile;
-
-      const range = document.createElement('input');
-      range.type = 'range';
-      range.min = '0.5';
-      range.max = '1.8';
-      range.step = '0.01';
-      range.value = String(config.scale);
-      range.setAttribute('aria-label', `${config.label} 파트 크기`);
-
-      const sizeLabel = document.createElement('label');
-      sizeLabel.className = 'part-control-label';
-      sizeLabel.textContent = '크기';
-      sizeLabel.appendChild(range);
 
       const positionRange = document.createElement('input');
       positionRange.type = 'range';
@@ -521,10 +669,8 @@
       const iframe = document.createElement('iframe');
       iframe.title = `${config.label} 파트`;
       iframe.hidden = true;
-
       wrapper.appendChild(header);
       wrapper.appendChild(select);
-      wrapper.appendChild(sizeLabel);
       wrapper.appendChild(positionLabel);
       wrapper.appendChild(iframe);
       partPanelContent.appendChild(wrapper);
@@ -532,10 +678,9 @@
       const group = new THREE.Group();
       group.position.set(0, config.y, 0);
       chamber.add(group);
-
       let inSceneMesh = null;
-      let inSceneModel = false;
       const removeCurrentMesh = () => {
+        loadedPartModels.delete(config.id);
         if (!inSceneMesh) return;
         group.remove(inSceneMesh);
         inSceneMesh.traverse((object) => {
@@ -544,7 +689,6 @@
           materials.forEach((material) => material?.dispose?.());
         });
         inSceneMesh = null;
-        inSceneModel = false;
       };
       const receivePartModel = (event) => {
         const currentFile = new URL(iframe.src).pathname.split('/').pop();
@@ -554,7 +698,7 @@
           const model = new THREE.ObjectLoader().parse(event.data.object);
           applyPartEdits(model, event.data.edits);
           model.position.y = 0.18;
-          model.scale.setScalar(Number(range.value) * 0.4);
+          model.scale.setScalar(config.scale * 0.4);
           model.traverse((object) => {
             if (object.isMesh) {
               object.castShadow = true;
@@ -576,9 +720,13 @@
             }
           });
           applyFeatherClipping(model, event.data.clipping, event.data.edits?.__settings?.clipFeathers === true);
+          const ribbonColor = ribbonColors.get(currentFile);
+          const head = model.getObjectByName('머리');
+          const ribbon = ribbonColor && head ? createForeheadRibbon(head, ribbonColor) : null;
           group.add(model);
           inSceneMesh = model;
-          inSceneModel = true;
+          loadedPartModels.set(config.id, { file: currentFile, ribbon });
+          updateCombinationRibbons();
         } catch (error) {
           console.error(`파트 모델을 불러오지 못했습니다: ${config.label}`, error);
         }
@@ -587,22 +735,19 @@
 
       select.addEventListener('change', () => {
         removeCurrentMesh();
-        iframe.src = select.value;
-      });
-
-      range.addEventListener('input', () => {
-        const value = Number(range.value);
-        if (inSceneMesh) {
-          inSceneMesh.scale.setScalar(inSceneModel ? value * 0.4 : value);
+        selectedPartFiles.set(config.id, select.value);
+        updateCombinationRibbons();
+        if (!select.value) {
+          iframe.src = 'about:blank';
+          return;
         }
-        group.scale.setScalar(1);
+        iframe.src = select.value;
       });
 
       positionRange.addEventListener('input', () => {
         group.position.y = config.y + Number(positionRange.value);
       });
 
-      range.dispatchEvent(new Event('input'));
       iframe.src = config.defaultFile;
     });
 
@@ -615,23 +760,72 @@
     headGroup.add(torus(0.54,0.055,-0.22));
 
     // ---------- Crystal ----------
-    const crystal = mesh(new THREE.OctahedronGeometry(0.62,0), crystalMat, {y:0.48, sy:1.1, sx:1.08});
+    function createBrilliantCutGeometry() {
+      const sides = 8;
+      const table = [];
+      const crown = [];
+      const girdle = [];
+      const culet = new THREE.Vector3(0, -0.32, 0);
+      for (let index = 0; index < sides; index += 1) {
+        const angle = (index / sides) * Math.PI * 2 + Math.PI / sides;
+        const cosine = Math.cos(angle);
+        const sine = Math.sin(angle);
+        table.push(new THREE.Vector3(cosine * 0.18, 0.29, sine * 0.18));
+        crown.push(new THREE.Vector3(cosine * 0.31, 0.18, sine * 0.31));
+        girdle.push(new THREE.Vector3(cosine * 0.44, 0.04, sine * 0.44));
+      }
+
+      const vertices = [];
+      const colors = [];
+      const addFace = (a, b, c, shade) => {
+        const normal = new THREE.Vector3()
+          .subVectors(b, a)
+          .cross(new THREE.Vector3().subVectors(c, a));
+        const center = new THREE.Vector3().add(a).add(b).add(c);
+        if (normal.dot(center) < 0) [b, c] = [c, b];
+        for (const point of [a, b, c]) {
+          vertices.push(point.x, point.y, point.z);
+          colors.push(shade, shade, shade);
+        }
+      };
+
+      const center = new THREE.Vector3(0, 0.29, 0);
+      for (let index = 0; index < sides; index += 1) {
+        const next = (index + 1) % sides;
+        const shade = [0.78, 1, 0.9, 0.84, 0.96, 0.74][index % 6];
+        addFace(center, table[index], table[next], 1);
+        addFace(table[index], crown[index], crown[next], shade);
+        addFace(table[index], crown[next], table[next], shade);
+        addFace(crown[index], girdle[index], girdle[next], shade);
+        addFace(crown[index], girdle[next], crown[next], shade);
+        addFace(girdle[index], culet, girdle[next], shade);
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      geometry.computeVertexNormals();
+      return geometry;
+    }
+
+    const crystal = mesh(createBrilliantCutGeometry(), crystalMat, {y:0.33, sx:1.35, sy:1.6, sz:1.35});
     crystal.rotation.y = Math.PI/4;
     headGroup.add(crystal);
 
-    const crystalAura = new THREE.Sprite(crystalAuraMat);
-    crystalAura.position.set(0, 0.48, 0.72);
-    crystalAura.scale.set(3.4, 3.4, 1);
-    headGroup.add(crystalAura);
+    crystal.geometry.computeBoundingBox();
+    const crystalCenter = crystal.geometry.boundingBox.getCenter(new THREE.Vector3())
+      .multiply(crystal.scale)
+      .applyEuler(crystal.rotation)
+      .add(crystal.position);
 
-    // Facet overlay for a more cut-gem look
-    const facet = mesh(
-      new THREE.OctahedronGeometry(0.625,0),
-      new THREE.MeshBasicMaterial({color:0xffffff, wireframe:true, transparent:true, opacity:0.12}),
-      {y:0.48, sy:1.1, sx:1.08}
-    );
-    facet.rotation.y = Math.PI/4;
-    headGroup.add(facet);
+    const crystalLight = new THREE.PointLight(0xdde8ff, 0, 6, 2);
+    crystalLight.position.copy(crystalCenter);
+    headGroup.add(crystalLight);
+
+    const crystalAura = new THREE.Sprite(crystalAuraMat);
+    crystalAura.position.copy(crystalCenter).add(new THREE.Vector3(0, 0, 0.03));
+    crystalAura.scale.set(4.2, 4.2, 1);
+    headGroup.add(crystalAura);
 
     // ---------- Dark cage ----------
     function createCageStrut(angle) {
@@ -668,8 +862,8 @@
     headGroup.add(mesh(new THREE.CylinderGeometry(0.04,0.04,1.35,16), darkMat, {y:0.48}));
 
     // tiny top cap
-    headGroup.add(mesh(new THREE.SphereGeometry(0.11,24,18), darkMat, {y:1.48}));
-    headGroup.add(mesh(new THREE.CylinderGeometry(0.055,0.055,0.18,12), darkMat, {y:1.42}));
+    headGroup.add(mesh(new THREE.SphereGeometry(0.11,24,18), darkMat, {y:1.37}));
+    headGroup.add(mesh(new THREE.CylinderGeometry(0.055,0.055,0.18,12), darkMat, {y:1.31}));
 
     // ---------- Outer glass dome ----------
     // Lathe profile produces a lantern-like rounded dome
@@ -688,31 +882,60 @@
     headGroup.add(dome);
 
     // ---------- Floor ----------
-    const floor = new THREE.Mesh(
-      new THREE.CircleGeometry(5.5, 96),
-      new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.95, metalness:0.0})
-    );
+    const floorMaterial = new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.95, metalness:0.0});
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(5.5, 96), floorMaterial);
     floor.rotation.x = -Math.PI/2;
     floor.position.y = -4.02;
     floor.receiveShadow = true;
     scene.add(floor);
 
+    const floorGlow = new THREE.Mesh(
+      new THREE.PlaneGeometry(5.2, 5.2),
+      new THREE.MeshBasicMaterial({
+        map: crystalAuraMat.map,
+        color: 0xb9c8ff,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        toneMapped: false
+      })
+    );
+    floorGlow.rotation.x = -Math.PI / 2;
+    floorGlow.position.y = floor.position.y + 0.015;
+    scene.add(floorGlow);
+
     // ---------- Interaction ----------
     let lightOn = false;
+    let darkModeOn = false;
 
     function setLightState(on) {
       lightOn = on;
       document.getElementById('toggle').textContent = on ? 'LIGHT OFF' : 'LIGHT ON';
 
       crystalMat.emissiveIntensity = on ? 8 : 0;
-      crystalMat.transmission = on ? 0 : 0.58;
-      crystalMat.opacity = on ? 1 : 0.68;
-      crystalMat.transparent = !on;
-      crystalMat.needsUpdate = true;
       crystalAuraMat.opacity = on ? 1 : 0;
+      crystalLight.intensity = on ? 9 : 0;
+      floorGlow.material.opacity = on ? 0.72 : 0;
+      reflections.forEach((reflection) => {
+        reflection.material.opacity = on ? reflection.userData.baseOpacity : 0;
+      });
     }
 
     document.getElementById('toggle').addEventListener('click', () => setLightState(!lightOn));
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    darkModeToggle.addEventListener('click', () => {
+      darkModeOn = !darkModeOn;
+      document.body.classList.toggle('dark-mode', darkModeOn);
+      darkModeToggle.textContent = darkModeOn ? '다크모드 ON' : '다크모드 OFF';
+      darkModeToggle.setAttribute('aria-pressed', String(darkModeOn));
+
+      hemisphere.intensity = darkModeOn ? 0.2 : 0.7;
+      key.intensity = darkModeOn ? 0.32 : 1.2;
+      rim.intensity = darkModeOn ? 0.2 : 0.45;
+      warm.intensity = darkModeOn ? 0.16 : 0.4;
+      floorMaterial.color.set(darkModeOn ? 0x252a36 : 0xffffff);
+    });
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
@@ -739,13 +962,20 @@
       // subtle showroom motion
       lightstick.rotation.y += 0.0012;
       crystal.rotation.y = Math.PI/4 + Math.sin(t * 0.55) * 0.10;
-      facet.rotation.y = crystal.rotation.y;
 
       if (lightOn) {
         crystalMat.emissiveIntensity = 7 + Math.sin(t * 3.2) * 1;
         crystalAuraMat.opacity = 0.95 + Math.sin(t * 2.4) * 0.05;
-        const auraSize = 3.3 + Math.sin(t * 2.4) * 0.24;
+        crystalLight.intensity = 8 + Math.sin(t * 2.4) * 1;
+        floorGlow.material.opacity = 0.65 + Math.sin(t * 2.4) * 0.08;
+        const auraSize = 4.1 + Math.sin(t * 2.4) * 0.28;
         crystalAura.scale.set(auraSize, auraSize, 1);
+        reflections.forEach((reflection) => {
+          const shimmer = 0.55 + Math.sin(t * 2.1 + reflection.userData.phase) * 0.35;
+          reflection.material.opacity = reflection.userData.baseOpacity * shimmer;
+          const pulse = 0.85 + shimmer * 0.3;
+          reflection.scale.setScalar(reflection.userData.baseSize * pulse);
+        });
       }
 
       renderer.render(scene, camera);
