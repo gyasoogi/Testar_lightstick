@@ -17,11 +17,31 @@
       background: radial-gradient(circle at 50% 30%, #242a37 0%, #11151e 48%, #080a10 100%);
     }
     #app {
+      position: relative;
       width: 100%;
       height: 100%;
+      z-index: 1;
+    }
+    #cameraFeed {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      display: none;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #10131a;
+    }
+    body.camera-active #cameraFeed {
+      display: block;
+    }
+    body.front-camera-active #cameraFeed {
+      transform: scaleX(-1);
     }
     .capture-frame,
-    .capture-frame img {
+    .capture-frame img,
+    .phone-bottom-frame,
+    #phoneCaptureButton {
       display: none;
     }
     .capture-frame {
@@ -42,8 +62,39 @@
       width: 100%;
       height: 100%;
     }
+    body.capture-mode .capture-frame .desktop-overlay {
+      position: absolute;
+      display: block;
+      width: min(38vw, 50vh);
+      height: auto;
+    }
+    body.capture-mode .capture-frame .desktop-left-top {
+      top: 0;
+      left: 0;
+    }
+    body.capture-mode .capture-frame .desktop-left-bottom {
+      bottom: 0;
+      left: 0;
+    }
+    body.capture-mode .capture-frame .desktop-middle-bottom {
+      bottom: 0;
+      left: 50%;
+      width: min(19vw, 25vh);
+      transform: translateX(-50%);
+    }
+    body.capture-mode .capture-frame .desktop-right-top {
+      top: 0;
+      right: 0;
+    }
+    body.capture-mode .capture-frame .desktop-right-bottom {
+      right: 0;
+      bottom: 0;
+    }
     @media (max-width: 600px) {
       body.capture-mode .capture-frame .desktop-frame {
+        display: none;
+      }
+      body.capture-mode .capture-frame .desktop-overlay {
         display: none;
       }
       body.capture-mode .capture-frame .phone-frame {
@@ -55,8 +106,40 @@
       body.capture-mode .capture-frame .phone-top {
         top: 0;
       }
-      body.capture-mode .capture-frame .phone-bottom {
+      body.capture-mode .capture-frame .phone-bottom-frame {
+        position: absolute;
         bottom: 0;
+        left: 0;
+        display: block;
+        width: 100%;
+        aspect-ratio: 2398 / 1024;
+      }
+      body.capture-mode .capture-frame .phone-bottom {
+        inset: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: fill;
+      }
+      body.capture-mode .phone-bottom-frame #phoneCaptureButton {
+        position: absolute;
+        left: 50%;
+        top: 58.6%;
+        display: block;
+        width: 64px;
+        height: 64px;
+        padding: 0;
+        transform: translate(-50%, -50%);
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        cursor: pointer;
+        pointer-events: auto;
+        touch-action: manipulation;
+      }
+      body.capture-mode #phoneCaptureButton:focus-visible {
+        outline: 2px solid #4b8cff;
+        outline-offset: 2px;
       }
     }
     .ui {
@@ -101,6 +184,60 @@
     }
     .view-controls button + button {
       margin-left: 0;
+    }
+    .camera-height-controls {
+      position: fixed;
+      top: 50%;
+      left: 14px;
+      z-index: 8;
+      display: grid;
+      grid-template-columns: repeat(3, 44px);
+      grid-template-rows: repeat(3, 44px);
+      gap: 4px;
+      transform: translateY(-50%);
+    }
+    .camera-height-controls button {
+      display: grid;
+      width: 44px;
+      aspect-ratio: 1;
+      place-items: center;
+      padding: 0;
+      border: 1px solid rgba(45, 55, 72, .22);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .84);
+      box-shadow: 0 4px 12px rgba(30, 45, 70, .16);
+      color: #263244;
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+      touch-action: manipulation;
+    }
+    .camera-height-controls [data-axis="y"][data-direction="1"] {
+      grid-column: 2;
+      grid-row: 1;
+    }
+    .camera-height-controls [data-axis="x"][data-direction="-1"] {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    .camera-height-controls [data-axis="x"][data-direction="1"] {
+      grid-column: 3;
+      grid-row: 2;
+    }
+    .camera-height-controls [data-axis="y"][data-direction="-1"] {
+      grid-column: 2;
+      grid-row: 3;
+    }
+    .camera-height-controls button:hover {
+      background: #fff;
+    }
+    body.dark-mode .camera-height-controls button {
+      border-color: rgba(220, 230, 250, .24);
+      background: rgba(22, 27, 38, .88);
+      color: #e6eaf2;
+    }
+    body.capture-mode .camera-height-controls {
+      display: none;
     }
     #captureControls {
       position: fixed;
@@ -319,6 +456,9 @@
         top: 10px;
         gap: 6px;
       }
+      #takeCapture {
+        display: none;
+      }
       #captureControls button {
         padding: 7px 10px;
         font-size: 11px;
@@ -326,6 +466,18 @@
       .view-controls button {
         padding: 5px 8px;
         font-size: 10px;
+      }
+      .camera-height-controls {
+        left: 8px;
+      }
+      .camera-height-controls button {
+        width: 36px;
+        font-size: 18px;
+      }
+      .camera-height-controls {
+        grid-template-columns: repeat(3, 36px);
+        grid-template-rows: repeat(3, 36px);
+        gap: 3px;
       }
       .part-panel {
         top: 10px;
@@ -383,11 +535,25 @@
   </script>
 </head>
 <body>
+  <video id="cameraFeed" autoplay playsinline muted></video>
   <div id="app"></div>
-  <div class="capture-frame" aria-hidden="true">
-    <img class="desktop-frame" src="img/desktop.png" alt="" />
+  <div class="camera-height-controls" id="cameraHeightControls" aria-label="시점과 위치 이동">
+    <button type="button" data-axis="y" data-direction="1" aria-label="카메라 시점 올리기" title="시점 올리기">▲</button>
+    <button type="button" data-axis="x" data-direction="-1" aria-label="카메라 시점 왼쪽" title="시점 왼쪽">◀</button>
+    <button type="button" data-axis="x" data-direction="1" aria-label="카메라 시점 오른쪽" title="시점 오른쪽">▶</button>
+    <button type="button" data-axis="y" data-direction="-1" aria-label="카메라 시점 내리기" title="시점 내리기">▼</button>
+  </div>
+  <div class="capture-frame">
+    <img class="desktop-overlay desktop-left-top" src="img/desktop-left-top.png" alt="" />
+    <img class="desktop-overlay desktop-left-bottom" src="img/desktop-left-bottom.png" alt="" />
+    <img class="desktop-overlay desktop-middle-bottom" src="img/desktop-middle-bottom.png" alt="" />
+    <img class="desktop-overlay desktop-right-top" src="img/desktop-right-top.png" alt="" />
+    <img class="desktop-overlay desktop-right-bottom" src="img/desktop-right-bottom.png" alt="" />
     <img class="phone-frame phone-top" src="img/phone-top.png" alt="" />
-    <img class="phone-frame phone-bottom" src="img/phone-bottom.png" alt="" />
+    <div class="phone-bottom-frame">
+      <img class="phone-frame phone-bottom" src="img/phone-bottom.png" alt="" />
+      <button id="phoneCaptureButton" type="button" aria-label="폰 버튼을 눌러 화면 캡처" title="화면 캡처"></button>
+    </div>
   </div>
 
   <div class="ui">
@@ -398,6 +564,8 @@
     <div class="view-controls">
       <button id="resetView" type="button">시점 초기화</button>
       <button id="frontModeToggle" type="button" aria-pressed="false">정면 조작 OFF</button>
+      <button id="cameraToggle" type="button" aria-pressed="false">카메라 켜기</button>
+      <button id="cameraFacingToggle" type="button" hidden>전면으로 전환</button>
       <button id="captureModeToggle" type="button">캡쳐 모드</button>
     </div>
   </div>
@@ -427,8 +595,8 @@
     scene.background = null;
 
     const camera = new THREE.PerspectiveCamera(34, innerWidth / innerHeight, 0.1, 100);
-    const defaultCameraPosition = new THREE.Vector3(5.4, 4.1, 8.6);
-    const defaultCameraTarget = new THREE.Vector3(0, 1.0, 0);
+    const defaultCameraPosition = new THREE.Vector3(5.4, 3.35, 8.6);
+    const defaultCameraTarget = new THREE.Vector3(0, 0.25, 0);
     const frontCameraPosition = new THREE.Vector3(0, 0.8, 8.5);
     const frontCameraTarget = new THREE.Vector3(0, 0, 0);
     camera.position.copy(defaultCameraPosition);
@@ -1173,33 +1341,12 @@
     dome.scale.set(1.14, 1.00, 1.08);
     headGroup.add(dome);
 
-    // ---------- Floor ----------
-    const floorMaterial = new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.95, metalness:0.0});
-    const floor = new THREE.Mesh(new THREE.CircleGeometry(5.5, 96), floorMaterial);
-    floor.rotation.x = -Math.PI/2;
-    floor.position.y = -4.02;
-    floor.receiveShadow = true;
-    scene.add(floor);
-
-    const floorGlow = new THREE.Mesh(
-      new THREE.PlaneGeometry(5.2, 5.2),
-      new THREE.MeshBasicMaterial({
-        map: crystalAuraMat.map,
-        color: 0xb9c8ff,
-        transparent: true,
-        opacity: 0,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        toneMapped: false
-      })
-    );
-    floorGlow.rotation.x = -Math.PI / 2;
-    floorGlow.position.y = floor.position.y + 0.015;
-    scene.add(floorGlow);
-
     // ---------- Interaction ----------
     let lightOn = false;
     let darkModeOn = false;
+    let cameraStream = null;
+    let cameraFacingMode = 'environment';
+    let cameraRequestId = 0;
 
     function setLightState(on) {
       lightOn = on;
@@ -1208,7 +1355,6 @@
       crystalMat.emissiveIntensity = on ? 8 : 0;
       crystalAuraMat.opacity = on ? 1 : 0;
       crystalLight.intensity = on ? 9 : 0;
-      floorGlow.material.opacity = on ? 0.72 : 0;
       reflections.forEach((reflection) => {
         reflection.material.opacity = on ? reflection.userData.baseOpacity : 0;
       });
@@ -1222,12 +1368,16 @@
     const captureControls = document.getElementById('captureControls');
     const exitCaptureMode = document.getElementById('exitCaptureMode');
     const takeCapture = document.getElementById('takeCapture');
+    const phoneCaptureButton = document.getElementById('phoneCaptureButton');
+    const cameraHeightControls = document.getElementById('cameraHeightControls');
+    const cameraFeed = document.getElementById('cameraFeed');
+    const cameraToggle = document.getElementById('cameraToggle');
+    const cameraFacingToggle = document.getElementById('cameraFacingToggle');
     const viewHint = document.getElementById('viewHint');
     const lightstickBaseY = lightstick.position.y;
     let frontMode = false;
     let activeFrontPointerId = null;
     let lastPointerX = 0;
-    let lastPointerY = 0;
     let captureMode = false;
 
     function setCaptureMode(enabled) {
@@ -1239,6 +1389,93 @@
     captureModeToggle.addEventListener('click', () => setCaptureMode(true));
     exitCaptureMode.addEventListener('click', () => setCaptureMode(false));
 
+    function stopCamera() {
+      cameraRequestId += 1;
+      cameraStream?.getTracks().forEach((track) => track.stop());
+      cameraStream = null;
+      cameraFeed.pause();
+      cameraFeed.srcObject = null;
+      document.body.classList.remove('camera-active');
+      document.body.classList.remove('front-camera-active');
+      cameraToggle.textContent = '카메라 켜기';
+      cameraToggle.setAttribute('aria-pressed', 'false');
+      cameraFacingToggle.hidden = true;
+      cameraToggle.disabled = false;
+      cameraFacingToggle.disabled = false;
+    }
+
+    async function startCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        alert('카메라를 사용할 수 없습니다. HTTPS 또는 localhost에서 페이지를 열어 주세요.');
+        return false;
+      }
+
+      const requestId = ++cameraRequestId;
+      cameraToggle.disabled = true;
+      cameraFacingToggle.disabled = true;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: cameraFacingMode },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+        if (requestId !== cameraRequestId) {
+          stream.getTracks().forEach((track) => track.stop());
+          return false;
+        }
+
+        cameraStream = stream;
+        cameraFeed.srcObject = stream;
+        await cameraFeed.play();
+        document.body.classList.add('camera-active');
+        document.body.classList.toggle('front-camera-active', cameraFacingMode === 'user');
+        cameraToggle.textContent = '카메라 끄기';
+        cameraToggle.setAttribute('aria-pressed', 'true');
+        cameraFacingToggle.textContent = cameraFacingMode === 'environment'
+          ? '전면으로 전환'
+          : '후면으로 전환';
+        cameraFacingToggle.hidden = false;
+        stream.getVideoTracks()[0]?.addEventListener('ended', () => {
+          if (cameraStream === stream) stopCamera();
+        }, { once: true });
+        return true;
+      } catch (error) {
+        if (requestId === cameraRequestId) {
+          cameraStream?.getTracks().forEach((track) => track.stop());
+          cameraStream = null;
+          cameraFeed.srcObject = null;
+          document.body.classList.remove('camera-active', 'front-camera-active');
+          cameraToggle.textContent = '카메라 켜기';
+          cameraToggle.setAttribute('aria-pressed', 'false');
+          cameraFacingToggle.hidden = true;
+          alert(`카메라를 시작할 수 없습니다: ${error instanceof Error ? error.message : String(error)}`);
+        }
+        return false;
+      } finally {
+        if (requestId === cameraRequestId) {
+          cameraToggle.disabled = false;
+          cameraFacingToggle.disabled = false;
+        }
+      }
+    }
+
+    cameraToggle.addEventListener('click', () => {
+      if (cameraStream) stopCamera();
+      else startCamera();
+    });
+
+    cameraFacingToggle.addEventListener('click', async () => {
+      if (!cameraStream) return;
+      cameraFacingMode = cameraFacingMode === 'environment' ? 'user' : 'environment';
+      cameraStream.getTracks().forEach((track) => track.stop());
+      cameraStream = null;
+      cameraFeed.srcObject = null;
+      await startCamera();
+    });
+
     async function captureScreen() {
       const captureCanvas = document.createElement('canvas');
       captureCanvas.width = innerWidth;
@@ -1248,18 +1485,28 @@
 
       const width = captureCanvas.width;
       const height = captureCanvas.height;
-      const background = context.createRadialGradient(width * 0.5, height * 0.3, 0, width * 0.5, height * 0.3, Math.max(width, height) * 0.75);
-      if (darkModeOn) {
-        background.addColorStop(0, '#242a37');
-        background.addColorStop(0.48, '#11151e');
-        background.addColorStop(1, '#080a10');
+      if (cameraStream && cameraFeed.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        if (cameraFacingMode === 'user') {
+          context.save();
+          context.translate(width, 0);
+          context.scale(-1, 1);
+        }
+        context.drawImage(cameraFeed, 0, 0, width, height);
+        if (cameraFacingMode === 'user') context.restore();
       } else {
-        background.addColorStop(0, '#f8fbff');
-        background.addColorStop(0.38, '#e8edf5');
-        background.addColorStop(1, '#cfd6e2');
+        const background = context.createRadialGradient(width * 0.5, height * 0.3, 0, width * 0.5, height * 0.3, Math.max(width, height) * 0.75);
+        if (darkModeOn) {
+          background.addColorStop(0, '#242a37');
+          background.addColorStop(0.48, '#11151e');
+          background.addColorStop(1, '#080a10');
+        } else {
+          background.addColorStop(0, '#f8fbff');
+          background.addColorStop(0.38, '#e8edf5');
+          background.addColorStop(1, '#cfd6e2');
+        }
+        context.fillStyle = background;
+        context.fillRect(0, 0, width, height);
       }
-      context.fillStyle = background;
-      context.fillRect(0, 0, width, height);
       renderer.render(scene, camera);
       context.drawImage(renderer.domElement, 0, 0, width, height);
 
@@ -1274,11 +1521,23 @@
         context.drawImage(phoneTop, 0, 0, width, topHeight);
         context.drawImage(phoneBottom, 0, height - bottomHeight, width, bottomHeight);
       } else {
-        const desktopFrame = document.querySelector('.desktop-frame');
-        if (!desktopFrame.complete || !desktopFrame.naturalWidth) {
-          throw new Error('캡쳐 프레임 이미지를 불러오지 못했습니다.');
-        }
-        context.drawImage(desktopFrame, 0, 0, width, height);
+        const cornerWidth = Math.min(width * 0.38, height * 0.5);
+        const centerWidth = cornerWidth / 2;
+        const desktopFrames = [
+          { selector: '.desktop-left-top', x: 0, y: 0, width: cornerWidth },
+          { selector: '.desktop-left-bottom', x: 0, y: height - cornerWidth, width: cornerWidth },
+          { selector: '.desktop-middle-bottom', x: (width - centerWidth) / 2, y: height - centerWidth, width: centerWidth },
+          { selector: '.desktop-right-top', x: width - cornerWidth, y: 0, width: cornerWidth },
+          { selector: '.desktop-right-bottom', x: width - cornerWidth, y: height - cornerWidth, width: cornerWidth }
+        ];
+        desktopFrames.forEach(({ selector, x, y, width: frameWidth }) => {
+          const frame = document.querySelector(selector);
+          if (!frame.complete || !frame.naturalWidth) {
+            throw new Error(`캡쳐 프레임 이미지를 불러오지 못했습니다: ${selector}`);
+          }
+          const frameHeight = frameWidth * frame.naturalHeight / frame.naturalWidth;
+          context.drawImage(frame, x, y, frameWidth, frameHeight);
+        });
       }
 
       const blob = await new Promise((resolve, reject) => {
@@ -1297,7 +1556,7 @@
       setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
     }
 
-    takeCapture.addEventListener('click', async () => {
+    async function handleCaptureRequest() {
       captureControls.hidden = true;
       await new Promise((resolve) => setTimeout(resolve, 50));
       try {
@@ -1308,7 +1567,10 @@
       } finally {
         if (captureMode) captureControls.hidden = false;
       }
-    });
+    }
+
+    takeCapture.addEventListener('click', handleCaptureRequest);
+    phoneCaptureButton.addEventListener('click', handleCaptureRequest);
 
     function setCameraView(front) {
       controls.enabled = true;
@@ -1320,6 +1582,37 @@
       controls.enabled = !front;
     }
 
+    cameraHeightControls.addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-direction]');
+      if (!button) return;
+      const direction = Number(button.dataset.direction);
+      const axis = button.dataset.axis;
+      if (frontMode) {
+        const property = axis === 'x' ? 'x' : 'y';
+        const basePosition = property === 'x' ? 0 : lightstickBaseY;
+        lightstick.position[property] = THREE.MathUtils.clamp(
+          lightstick.position[property] + direction * 0.25,
+          basePosition - 1.5,
+          basePosition + 1.5
+        );
+        return;
+      }
+      if (axis === 'x') {
+        const horizontalChange = direction * 0.25;
+        camera.position.x += horizontalChange;
+        controls.target.x += horizontalChange;
+        controls.update();
+        return;
+      }
+      const targetY = controls.target.y;
+      const nextTargetY = THREE.MathUtils.clamp(targetY + direction * 0.25, -2.5, 4.5);
+      const heightChange = nextTargetY - targetY;
+      camera.position.y += heightChange;
+      controls.target.y = nextTargetY;
+      camera.lookAt(controls.target);
+      controls.update();
+    });
+
     resetViewButton.addEventListener('click', () => setCameraView(frontMode));
     frontModeToggle.addEventListener('click', () => {
       frontMode = !frontMode;
@@ -1329,11 +1622,19 @@
         lightstick.position.y = lightstickBaseY;
         lightstick.rotation.set(0, 0, 0);
       }
+      cameraHeightControls.querySelectorAll('button[data-direction]').forEach((button) => {
+        const directionLabel = button.dataset.axis === 'x'
+          ? (button.dataset.direction === '-1' ? '왼쪽' : '오른쪽')
+          : (button.dataset.direction === '1' ? '올리기' : '내리기');
+        const targetLabel = frontMode ? '라이트스틱' : '카메라 시점';
+        button.setAttribute('aria-label', `${targetLabel} ${directionLabel}`);
+        button.title = `${targetLabel} ${directionLabel}`;
+      });
       setCameraView(frontMode);
       frontModeToggle.textContent = `정면 조작 ${frontMode ? 'ON' : 'OFF'}`;
       frontModeToggle.setAttribute('aria-pressed', String(frontMode));
       viewHint.textContent = frontMode
-        ? '정면 조작: 좌우 회전 · 위아래 이동'
+        ? '정면 조작: 좌우 드래그 회전 · 화살표로 상하좌우 이동'
         : '드래그: 회전 · 휠: 확대/축소';
     });
 
@@ -1347,7 +1648,6 @@
       key.intensity = darkModeOn ? 0.32 : 1.2;
       rim.intensity = darkModeOn ? 0.2 : 0.45;
       warm.intensity = darkModeOn ? 0.16 : 0.4;
-      floorMaterial.color.set(darkModeOn ? 0x252a36 : 0xffffff);
     });
 
     const raycaster = new THREE.Raycaster();
@@ -1359,7 +1659,6 @@
         event.preventDefault();
         activeFrontPointerId = event.pointerId;
         lastPointerX = event.clientX;
-        lastPointerY = event.clientY;
         renderer.domElement.setPointerCapture(event.pointerId);
         return;
       }
@@ -1375,17 +1674,8 @@
       if (!frontMode || event.pointerId !== activeFrontPointerId) return;
       event.preventDefault();
       const deltaX = event.clientX - lastPointerX;
-      const deltaY = event.clientY - lastPointerY;
       lastPointerX = event.clientX;
-      lastPointerY = event.clientY;
       lightstick.rotation.y += deltaX * 0.004;
-      const rect = renderer.domElement.getBoundingClientRect();
-      const worldUnitsPerPixel = (2 * frontCameraPosition.z * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))) / rect.height * 0.3;
-      lightstick.position.y = THREE.MathUtils.clamp(
-        lightstick.position.y - deltaY * worldUnitsPerPixel,
-        lightstickBaseY - 1.5,
-        lightstickBaseY + 1.5
-      );
     });
 
     const finishFrontDrag = (event) => {
@@ -1412,7 +1702,6 @@
         crystalMat.emissiveIntensity = 7 + Math.sin(t * 3.2) * 1;
         crystalAuraMat.opacity = 0.95 + Math.sin(t * 2.4) * 0.05;
         crystalLight.intensity = 8 + Math.sin(t * 2.4) * 1;
-        floorGlow.material.opacity = 0.65 + Math.sin(t * 2.4) * 0.08;
         const auraSize = 4.1 + Math.sin(t * 2.4) * 0.28;
         crystalAura.scale.set(auraSize, auraSize, 1);
         reflections.forEach((reflection) => {
