@@ -18,6 +18,8 @@ export function setupInteractionControls(context) {
     let cameraStream = null;
     let cameraFacingMode = 'environment';
     let cameraRequestId = 0;
+    let cameraWasActiveBeforeHide = false;
+    let cameraRecoveryInProgress = false;
     
     function setLightState(on) {
         lightOn = on;
@@ -209,7 +211,10 @@ export function setupInteractionControls(context) {
     }
     
     cameraToggle.addEventListener('click', () => {
-        if (cameraStream) stopCamera();
+        if (cameraStream) {
+            cameraWasActiveBeforeHide = false;
+            stopCamera();
+        }
         else startCamera();
     });
     
@@ -221,6 +226,47 @@ export function setupInteractionControls(context) {
         cameraFeed.srcObject = null;
         await startCamera();
     });
+
+    async function resumeCameraAfterVisibility() {
+        if (
+            document.visibilityState === 'hidden' ||
+            !cameraWasActiveBeforeHide ||
+            cameraRecoveryInProgress
+        ) {
+            return;
+        }
+
+        cameraWasActiveBeforeHide = false;
+        cameraRecoveryInProgress = true;
+        const facingMode = cameraFacingMode;
+
+        if (cameraStream) stopCamera();
+        cameraFacingMode = facingMode;
+
+        try {
+            await startCamera();
+        } finally {
+            cameraRecoveryInProgress = false;
+        }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            cameraWasActiveBeforeHide ||= Boolean(cameraStream);
+            return;
+        }
+
+        resumeCameraAfterVisibility();
+    });
+
+    window.addEventListener('blur', () => {
+        cameraWasActiveBeforeHide ||= Boolean(cameraStream);
+    });
+    window.addEventListener('pagehide', () => {
+        cameraWasActiveBeforeHide ||= Boolean(cameraStream);
+    });
+    window.addEventListener('pageshow', resumeCameraAfterVisibility);
+    window.addEventListener('focus', resumeCameraAfterVisibility);
     
     function selectScreenImage(image) {
         screenImageBackLayer.querySelectorAll('.screen-image').forEach((item) => item.classList.remove('selected'));
