@@ -1,0 +1,636 @@
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background:
+    radial-gradient(circle at 50% 30%, #f8fbff 0%, #e8edf5 38%, #cfd6e2 100%);
+    font-family: Arial, sans-serif;
+}
+body.dark-mode {
+    background: radial-gradient(circle at 50% 30%, #242a37 0%, #11151e 48%, #080a10 100%);
+}
+#app {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+}
+#screenImageBackLayer,
+#screenImageFrontLayer {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+#screenImageBackLayer {
+    z-index: 1;
+}
+#screenImageFrontLayer {
+    z-index: 3;
+}
+body.back-screen-image-selected #app {
+    pointer-events: none;
+}
+.screen-image {
+    position: absolute;
+    display: block;
+    width: min(38vw, 420px);
+    max-width: calc(100vw - 24px);
+    max-height: 55vh;
+    object-fit: contain;
+    cursor: grab;
+    pointer-events: none;
+    touch-action: none;
+    user-select: none;
+    filter: drop-shadow(0 8px 18px rgba(18, 26, 40, .2));
+}
+.screen-image.selected {
+    outline: 2px solid #4b8cff;
+    outline-offset: 2px;
+}
+.screen-image.dragging {
+    cursor: grabbing;
+}
+#cameraFeed {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    display: none;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #10131a;
+}
+body.camera-active #cameraFeed {
+    display: block;
+}
+body.front-camera-active #cameraFeed {
+    transform: scaleX(-1);
+}
+.capture-frame,
+.capture-frame img,
+.phone-bottom-frame,
+#phoneCaptureButton {
+    display: none;
+}
+.capture-frame {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+}
+body.capture-mode .capture-frame {
+    display: block;
+}
+body.capture-mode .ui,
+body.capture-mode .part-panel {
+    display: none;
+}
+body.capture-mode .capture-frame .desktop-frame {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+body.capture-mode .capture-frame .desktop-overlay {
+    position: absolute;
+    display: block;
+    width: min(38vw, 50vh);
+    height: auto;
+}
+body.capture-mode .capture-frame .desktop-left-top {
+    top: 0;
+    left: 0;
+}
+body.capture-mode .capture-frame .desktop-left-bottom {
+    bottom: 0;
+    left: 0;
+}
+body.capture-mode .capture-frame .desktop-middle-bottom {
+    bottom: 0;
+    left: 50%;
+    width: min(19vw, 25vh);
+    transform: translateX(-50%);
+}
+body.capture-mode .capture-frame .desktop-right-top {
+    top: 0;
+    right: 0;
+}
+body.capture-mode .capture-frame .desktop-right-bottom {
+    right: 0;
+    bottom: 0;
+}
+@media (max-width: 600px) {
+    body.capture-mode .capture-frame .desktop-frame {
+    display: none;
+    }
+    body.capture-mode .capture-frame .desktop-overlay {
+    display: none;
+    }
+    body.capture-mode .capture-frame .phone-frame {
+    position: absolute;
+    display: block;
+    width: 100%;
+    height: auto;
+    }
+    body.capture-mode .capture-frame .phone-top {
+    top: 0;
+    }
+    body.capture-mode .capture-frame .phone-bottom-frame {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    display: block;
+    width: 100%;
+    aspect-ratio: 2398 / 1024;
+    }
+    body.capture-mode .capture-frame .phone-bottom {
+    inset: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    }
+    body.capture-mode .phone-bottom-frame #phoneCaptureButton {
+    position: absolute;
+    left: 50%;
+    top: 58.6%;
+    display: block;
+    width: 64px;
+    height: 64px;
+    padding: 0;
+    transform: translate(-50%, -50%);
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    pointer-events: auto;
+    touch-action: manipulation;
+    }
+    body.capture-mode #phoneCaptureButton:focus-visible {
+    outline: 2px solid #4b8cff;
+    outline-offset: 2px;
+    }
+}
+.ui {
+    position: fixed;
+    left: 18px;
+    bottom: 18px;
+    z-index: 5;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.72);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 10px 30px rgba(30,45,70,.12);
+    color: #263244;
+    font-size: 13px;
+    line-height: 1.55;
+    user-select: none;
+}
+.ui b { font-size: 14px; }
+.ui button {
+    margin-top: 8px;
+    padding: 7px 11px;
+    border: 0;
+    border-radius: 999px;
+    background: #222836;
+    color: white;
+    cursor: pointer;
+    font-weight: 700;
+}
+.ui button + button {
+    margin-left: 5px;
+}
+.light-color-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 8px 0 0 6px;
+    vertical-align: middle;
+    font-size: 12px;
+    font-weight: 700;
+}
+.light-color-control input {
+    width: 34px;
+    height: 30px;
+    padding: 2px;
+    border: 1px solid rgba(38, 50, 68, .2);
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+}
+.view-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 3px;
+}
+.view-controls button {
+    margin: 0;
+    padding: 6px 9px;
+    font-size: 11px;
+}
+.view-controls button + button {
+    margin-left: 0;
+}
+.screen-image-controls {
+    position: fixed;
+    z-index: 15;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: min(300px, calc(100vw - 16px));
+    padding: 7px;
+    border: 1px solid rgba(45, 55, 72, .18);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, .92);
+    box-shadow: 0 6px 20px rgba(30, 45, 70, .2);
+    backdrop-filter: blur(12px);
+}
+.screen-image-controls[hidden] {
+    display: none;
+}
+.screen-image-controls.locked {
+    width: max-content;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+}
+.screen-image-controls button {
+    min-width: 32px;
+    height: 32px;
+    margin: 0;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 6px;
+    background: #222836;
+    color: white;
+    cursor: pointer;
+    font-size: 13px;
+}
+.screen-image-controls #screenImageLayerToggle {
+    flex: 1;
+    white-space: nowrap;
+}
+.screen-image-controls.locked #screenImageLockToggle {
+    width: 132px;
+    height: 38px;
+    padding: 0 12px;
+    border: 1px solid rgba(45, 55, 72, .18);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 6px 18px rgba(30, 45, 70, .2);
+    color: #222836;
+    font-weight: 700;
+}
+body.dark-mode .screen-image-controls {
+    border-color: rgba(220, 230, 250, .18);
+    background: rgba(22, 27, 38, .94);
+    color: #e6eaf2;
+}
+body.dark-mode .screen-image-controls button {
+    background: #e6eaf2;
+    color: #222836;
+}
+body.dark-mode .screen-image-controls.locked #screenImageLockToggle {
+    background: #fff;
+    color: #222836;
+}
+body.capture-mode .screen-image-controls {
+    display: none;
+}
+.camera-height-controls {
+    position: fixed;
+    top: 50%;
+    left: 14px;
+    z-index: 8;
+    display: grid;
+    grid-template-columns: repeat(3, 44px);
+    grid-template-rows: repeat(3, 44px);
+    gap: 4px;
+    transform: translateY(-50%);
+}
+.camera-height-controls button {
+    display: grid;
+    width: 44px;
+    aspect-ratio: 1;
+    place-items: center;
+    padding: 0;
+    border: 1px solid rgba(45, 55, 72, .22);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .84);
+    box-shadow: 0 4px 12px rgba(30, 45, 70, .16);
+    color: #263244;
+    cursor: pointer;
+    font-size: 20px;
+    line-height: 1;
+    touch-action: manipulation;
+}
+.camera-height-controls [data-axis="y"][data-direction="1"] {
+    grid-column: 2;
+    grid-row: 1;
+}
+.camera-height-controls [data-axis="x"][data-direction="-1"] {
+    grid-column: 1;
+    grid-row: 2;
+}
+.camera-height-controls [data-axis="x"][data-direction="1"] {
+    grid-column: 3;
+    grid-row: 2;
+}
+.camera-height-controls [data-axis="y"][data-direction="-1"] {
+    grid-column: 2;
+    grid-row: 3;
+}
+.camera-height-controls button:hover {
+    background: #fff;
+}
+body.dark-mode .camera-height-controls button {
+    border-color: rgba(220, 230, 250, .24);
+    background: rgba(22, 27, 38, .88);
+    color: #e6eaf2;
+}
+body.capture-mode .camera-height-controls {
+    display: none;
+}
+#captureControls {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    z-index: 30;
+    display: flex;
+    gap: 8px;
+    transform: translateX(-50%);
+}
+#captureControls[hidden] {
+    display: none;
+}
+#captureControls button {
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 999px;
+    background: #222836;
+    color: white;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+body.dark-mode #captureControls button {
+    background: #e6eaf2;
+    color: #222836;
+}
+#combinationTransformationToggle {
+    width: 100%;
+    margin: 0 0 6px;
+    padding: 6px 9px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #657084;
+    text-align: left;
+    box-shadow: inset 0 0 0 1px rgba(70, 82, 104, .2);
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+}
+#combinationTransformationToggle[aria-pressed="true"] {
+    background: #6b4de6;
+    color: white;
+}
+#combinationTransformationToggle[hidden] {
+    display: none;
+}
+body.dark-mode .ui {
+    background: rgba(22,27,38,.82);
+    color: #e6eaf2;
+    box-shadow: 0 10px 30px rgba(0,0,0,.3);
+}
+body.dark-mode .ui button {
+    background: #e6eaf2;
+    color: #222836;
+}
+body.dark-mode .light-color-control input {
+    border-color: rgba(230, 234, 242, .36);
+}
+body.dark-mode .view-controls button[aria-pressed="true"] {
+    background: #8b72f0;
+    color: white;
+}
+
+.part-panel {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    width: min(210px, calc(100vw - 36px));
+    box-sizing: border-box;
+    max-height: calc(100vh - 36px);
+    overflow: auto;
+    z-index: 10;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.8);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 12px 28px rgba(30,45,70,.12);
+    color: #1f2736;
+    font-size: 12px;
+}
+body.dark-mode .part-panel {
+    background: rgba(24,29,40,.88);
+    color: #e6eaf2;
+    box-shadow: 0 12px 28px rgba(0,0,0,.35);
+}
+body.dark-mode .part-panel h3 {
+    color: #f0f3fa;
+}
+body.dark-mode .part-panel-toggle {
+    background: #e6eaf2;
+    color: #222836;
+}
+body.dark-mode #combinationTransformationToggle {
+    background: #8b72f0;
+    color: white;
+}
+body.dark-mode #combinationTransformationToggle[aria-pressed="false"] {
+    background: transparent;
+    color: #c1cada;
+    box-shadow: inset 0 0 0 1px rgba(220,230,250,.24);
+}
+body.dark-mode .part-slot {
+    border-bottom-color: rgba(220,230,250,.16);
+}
+body.dark-mode .part-slot select {
+    border-color: rgba(220,230,250,.22);
+    background: #303747;
+    color: #f0f3fa;
+}
+.part-panel.collapsed {
+    width: auto;
+}
+.part-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.part-panel h3 {
+    margin: 0;
+    font-size: 13px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #384159;
+}
+.part-panel-toggle {
+    flex: none;
+    padding: 5px 9px;
+    border: 0;
+    border-radius: 999px;
+    background: #222836;
+    color: white;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+}
+.part-panel-content {
+    margin-top: 12px;
+}
+.spindle-control {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 10px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.spindle-control input {
+    margin: 0;
+    accent-color: #2d6df6;
+}
+.part-slot {
+    margin-bottom: 4px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(40, 52, 70, 0.12);
+}
+.part-slot-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 2px;
+    font-weight: 700;
+}
+.part-control-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 0;
+    font-size: 9px;
+    opacity: .75;
+}
+.heart-color-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 2px 0;
+    font-size: 9px;
+}
+.heart-color-control[hidden] {
+    display: none;
+}
+.heart-color-control input {
+    width: 25px;
+    height: 19px;
+    padding: 0;
+    border: 1px solid rgba(30,45,70,.2);
+    border-radius: 5px;
+    background: transparent;
+    cursor: pointer;
+}
+.part-slot select {
+    flex: 1;
+    width: 0;
+    min-width: 0;
+    margin: 0;
+    padding: 4px 6px;
+    border: 1px solid rgba(30,45,70,.14);
+    border-radius: 6px;
+    background: white;
+    color: #1f2736;
+    font-size: 11px;
+}
+.part-slot input[type="range"] {
+    flex: 1;
+    min-width: 0;
+    accent-color: #2d6df6;
+    display: block;
+    height: 14px;
+    margin: 0;
+}
+@media (max-width: 600px) {
+    #captureControls {
+    top: 10px;
+    gap: 6px;
+    }
+    #takeCapture {
+    display: none;
+    }
+    #captureControls button {
+    padding: 7px 10px;
+    font-size: 11px;
+    }
+    .view-controls button {
+    padding: 5px 8px;
+    font-size: 10px;
+    }
+    .camera-height-controls {
+    display: none;
+    }
+    .part-panel {
+    top: 10px;
+    right: 10px;
+    width: min(175px, calc(100vw - 20px));
+    max-height: calc(100vh - 20px);
+    padding: 9px;
+    font-size: 11px;
+    }
+    .part-panel-header {
+    gap: 8px;
+    }
+    .part-panel h3 {
+    font-size: 12px;
+    }
+    .part-panel-toggle {
+    padding: 4px 8px;
+    }
+    .part-panel-content {
+    margin-top: 8px;
+    }
+    .spindle-control {
+    margin-bottom: 7px;
+    }
+    .part-slot {
+    margin-bottom: 4px;
+    padding: 4px 0;
+    }
+    .part-slot select {
+    padding: 4px 5px;
+    font-size: 10px;
+    }
+    .part-control-label {
+    gap: 4px;
+    font-size: 8px;
+    }
+    .heart-color-control {
+    gap: 5px;
+    font-size: 8px;
+    }
+    .heart-color-control input {
+    width: 22px;
+    height: 17px;
+    }
+}
