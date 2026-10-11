@@ -400,9 +400,7 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
             metalness: 0.08,
             clearcoat: 0.28,
             clearcoatRoughness: 0.42,
-            side: THREE.DoubleSide,
-            depthTest: false,
-            depthWrite: false
+            side: THREE.DoubleSide
         });
 
         const leftWing = new THREE.Shape();
@@ -452,8 +450,6 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
             color: 0x4a4c50,
             transparent: true,
             opacity: 0.48,
-            depthTest: false,
-            depthWrite: false
         });
         const folds = [
             [[-0.13, 0.015, 0.056], [-0.27, 0.12, 0.056], [-0.44, 0.15, 0.056]],
