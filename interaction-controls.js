@@ -70,6 +70,9 @@ export function setupInteractionControls(context) {
     let lastPointerX = 0;
     let captureMode = false;
     let specialCaptureAlertShown = false;
+    let moonCaptureAlertShown = false;
+    let beaPairCaptureAlertShown = false;
+    let chaKimPairCaptureAlertShown = false;
     
     function setCaptureMode(enabled) {
         captureMode = enabled;
@@ -512,8 +515,22 @@ export function setupInteractionControls(context) {
             && selectedFiles.every((file) => !file || file === 'moon.html');
         const isMoonSoloCapture = lightOn && darkModeOn
             && isMoonSoloCombination;
-        if (isMoonSoloCapture) {
+        if (isMoonSoloCapture && !moonCaptureAlertShown) {
+            moonCaptureAlertShown = true;
             alert('저는 테스타의 박문대라서 행복합니다.');
+        }
+        const isBeaPairCombination = selectedFiles.filter((file) => file === 'bea.html').length === 2
+            && selectedFiles.filter(Boolean).length === 2;
+        if (isBeaPairCombination && !beaPairCaptureAlertShown) {
+            beaPairCaptureAlertShown = true;
+            alert('[기억 내놔!]');
+        }
+        const isChaKimPairCombination = selectedFiles.filter((file) => file === 'cha.html').length === 1
+            && selectedFiles.filter((file) => file === 'kim.html').length === 1
+            && selectedFiles.filter(Boolean).length === 2;
+        if (isChaKimPairCombination && !chaKimPairCaptureAlertShown) {
+            chaKimPairCaptureAlertShown = true;
+            alert('[잘 가 차유진]');
         }
         const isSpecialCaptureCombination = selectedFiles.length === chaColorCombination.length
             && chaColorCombination.every((file) => selectedFiles.includes(file));
