@@ -337,81 +337,61 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
         });
     }
 
+
     function createForeheadRibbon(head, color) {
-    const ribbon = new THREE.Group();
+      const ribbon = new THREE.Group();
+      const ribbonMaterial = new THREE.MeshPhysicalMaterial({
+        color,
+        roughness: 0.28,
+        metalness: 0.04,
+        clearcoat: 0.8,
+        clearcoatRoughness: 0.18,
+        side: THREE.DoubleSide
+      });
+      const loopShape = new THREE.Shape();
+      loopShape.moveTo(0, 0);
+      loopShape.quadraticCurveTo(-0.05, 0.19, -0.29, 0.22);
+      loopShape.quadraticCurveTo(-0.43, 0.16, -0.37, 0);
+      loopShape.quadraticCurveTo(-0.43, -0.16, -0.29, -0.22);
+      loopShape.quadraticCurveTo(-0.05, -0.19, 0, 0);
+      const loopGeometry = new THREE.ExtrudeGeometry(loopShape, {
+        depth: 0.055,
+        bevelEnabled: true,
+        bevelSegments: 5,
+        bevelSize: 0.03,
+        bevelThickness: 0.04,
+        steps: 1,
+        curveSegments: 12
+      });
+      const loopPositions = loopGeometry.attributes.position;
+      for (let index = 0; index < loopPositions.count; index += 1) {
+        const x = loopPositions.getX(index);
+        const y = loopPositions.getY(index);
+        const domeRadius = ((x + 0.215) / 0.32) ** 2 + (y / 0.27) ** 2;
+        const dome = Math.pow(Math.max(0, 1 - domeRadius), 1.5);
+        loopPositions.setZ(index, loopPositions.getZ(index) + 0.18 * dome);
+      }
+      loopGeometry.computeVertexNormals();
+      const leftLoop = new THREE.Mesh(loopGeometry, ribbonMaterial);
+      leftLoop.position.z = -0.045;
+      ribbon.add(leftLoop);
 
-    const material = new THREE.MeshBasicMaterial({
-        color: color,
-        side: THREE.DoubleSide,
-        depthTest: false,
-        depthWrite: false
-    });
+      const rightLoop = new THREE.Mesh(loopGeometry, ribbonMaterial);
+      rightLoop.position.z = -0.045;
+      rightLoop.scale.x = -1;
+      ribbon.add(rightLoop);
 
-    const depth = 0.035;
-
-    const extrudeSettings = {
-        depth: depth,
-        bevelEnabled: false
-    };
-
-    // 1. 왼쪽: 오른쪽을 향하는 삼각형 ▶
-    const triangleShape = new THREE.Shape();
-    triangleShape.moveTo(-0.48, 0.16);
-    triangleShape.lineTo(-0.48, -0.16);
-    triangleShape.lineTo(-0.15, 0);
-    triangleShape.closePath();
-
-    const triangle = new THREE.Mesh(
-        new THREE.ExtrudeGeometry(triangleShape, extrudeSettings),
-        material
-    );
-    triangle.position.z = 0;
-    ribbon.add(triangle);
-
-    // 2. 가운데: 네모 ■
-    const squareShape = new THREE.Shape();
-    squareShape.moveTo(-0.13, 0.13);
-    squareShape.lineTo(0.13, 0.13);
-    squareShape.lineTo(0.13, -0.13);
-    squareShape.lineTo(-0.13, -0.13);
-    squareShape.closePath();
-
-    const square = new THREE.Mesh(
-        new THREE.ExtrudeGeometry(squareShape, extrudeSettings),
-        material
-    );
-    square.position.z = 0.045;
-    ribbon.add(square);
-
-    // 3. 오른쪽: 왼쪽을 향하는 사각형 꼬리 ◀
-    const tailShape = new THREE.Shape();
-    tailShape.moveTo(0.15, 0);
-    tailShape.lineTo(0.31, 0.15);
-    tailShape.lineTo(0.48, 0.15);
-    tailShape.lineTo(0.48, -0.15);
-    tailShape.lineTo(0.31, -0.15);
-    tailShape.closePath();
-
-    const tail = new THREE.Mesh(
-        new THREE.ExtrudeGeometry(tailShape, extrudeSettings),
-        material
-    );
-    tail.position.z = 0;
-    ribbon.add(tail);
-
-    // 이마에 부착
-    ribbon.name = '이마 리본';
-    ribbon.scale.setScalar(1.45);
-    ribbon.position.set(0, 0.7, 0.64);
-    ribbon.rotation.set(-Math.PI / 4, 0, 0);
-
-    ribbon.renderOrder = 10;
-    ribbon.visible = false;
-
-    head.add(ribbon);
-
-    return ribbon;
-}
+      const knot = new THREE.Mesh(new THREE.SphereGeometry(0.065, 14, 10), ribbonMaterial);
+      knot.position.z = 0.045;
+      knot.scale.set(1.05, 1.1, 0.85);
+      ribbon.add(knot);
+      ribbon.scale.setScalar(1.45);
+      ribbon.position.set(0, 0.7, 0.64);
+      ribbon.rotation.x = -Math.PI / 4;
+      ribbon.visible = false;
+      head.add(ribbon);
+      return ribbon;
+    }
 
     function createBeaNecktie() {
         const material = new THREE.MeshPhysicalMaterial({

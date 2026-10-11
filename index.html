@@ -38,22 +38,33 @@
     </div>
   </div>
 
-  <div class="ui">
-    <span id="viewHint">드래그: 회전 · 휠: 확대/축소</span><br/>
-    버튼 클릭: 조명 ON/OFF<br/>
-    <button id="toggle">LIGHT ON</button>
-    <button id="darkModeToggle" type="button" aria-pressed="false">다크모드 OFF</button>
-    <label class="light-color-control" for="lightColorInput">라이트 색상
-      <input id="lightColorInput" type="color" value="#ffffff" aria-label="라이트 색상 선택" />
-    </label>
-    <div class="view-controls">
-      <button id="resetView" type="button">시점 초기화</button>
-      <button id="frontModeToggle" type="button" aria-pressed="false">정면 조작 OFF</button>
-      <button id="cameraToggle" type="button" aria-pressed="false">카메라 켜기</button>
-      <button id="cameraFacingToggle" type="button" hidden>전면으로 전환</button>
-      <button id="addScreenImage" type="button">이미지 추가</button>
-      <button id="captureModeToggle" type="button">캡쳐 모드</button>
+  <button class="menu-toggle" id="menuToggle" type="button" aria-expanded="false" aria-controls="controlMenu" aria-label="조작 메뉴 열기" title="조작 메뉴">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="ui" id="controlMenu" hidden>
+    <div class="menu-heading">
+      <div><span class="eyebrow">CONTROL PANEL</span><strong>조작 메뉴</strong></div>
     </div>
+    <p class="view-hint" id="viewHint">드래그: 회전 · 휠: 확대/축소</p>
+    <section class="control-section">
+      <span class="section-label">LIGHTING</span>
+      <button id="toggle" type="button">LIGHT ON</button>
+      <label class="light-color-control" for="lightColorInput">라이트 색상
+        <input id="lightColorInput" type="color" value="#ffffff" aria-label="라이트 색상 선택" />
+      </label>
+    </section>
+    <section class="control-section">
+      <span class="section-label">DISPLAY</span>
+      <button id="darkModeToggle" type="button" aria-pressed="false">다크모드 OFF</button>
+      <div class="view-controls">
+        <button id="resetView" type="button">시점 초기화</button>
+        <button id="frontModeToggle" type="button" aria-pressed="false">정면 조작 OFF</button>
+        <button id="cameraToggle" type="button" aria-pressed="false">카메라 켜기</button>
+        <button id="cameraFacingToggle" type="button" hidden>전면으로 전환</button>
+        <button id="addScreenImage" type="button">이미지 추가</button>
+        <button id="captureModeToggle" type="button">캡처 모드</button>
+      </div>
+    </section>
     <input id="screenImageInput" type="file" accept="image/*" multiple hidden />
   </div>
   <div id="captureControls" hidden>
@@ -72,12 +83,52 @@
   <div class="part-panel" id="partPanel">
     <div class="part-panel-header">
       <h3 id="partPanelTitle">커스터마이저</h3>
-      <button class="part-panel-toggle" id="partPanelToggle" type="button" aria-expanded="true" aria-controls="partPanelContent">접기</button>
+      <button class="part-panel-toggle" id="partPanelToggle" type="button" aria-label="커스터마이저 접기" title="접기" aria-expanded="true" aria-controls="partPanelContent">-</button>
     </div>
     <button id="combinationTransformationToggle" type="button" aria-pressed="true" hidden>변신 ON</button>
     <div class="part-panel-content" id="partPanelContent">
       <label class="spindle-control"><input id="spindleToggle" type="checkbox" checked /> 중앙 축 표시</label>
     </div>
   </div>
+  <script>
+    (() => {
+      const toggle = document.getElementById('menuToggle');
+      const menu = document.getElementById('controlMenu');
+      let closeTimer;
+      const setMenu = (open) => {
+        window.clearTimeout(closeTimer);
+        if (open) {
+          menu.hidden = false;
+          requestAnimationFrame(() => menu.classList.add('is-open'));
+        } else {
+          menu.classList.remove('is-open');
+          closeTimer = window.setTimeout(() => { menu.hidden = true; }, 220);
+        }
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.setAttribute('aria-label', open ? '조작 메뉴 닫기' : '조작 메뉴 열기');
+      };
+      toggle.addEventListener('click', () => setMenu(menu.hidden || !menu.classList.contains('is-open')));
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !menu.hidden) setMenu(false);
+      });
+      document.addEventListener('pointerdown', (event) => {
+        if (!menu.hidden && !menu.contains(event.target) && !toggle.contains(event.target)) setMenu(false);
+      });
+      const partPanel = document.getElementById('partPanel');
+      const partToggle = document.getElementById('partPanelToggle');
+      const partContent = document.getElementById('partPanelContent');
+      if (partToggle && partPanel && partContent) {
+        const syncPartToggle = () => {
+          const collapsed = partPanel.classList.contains('collapsed');
+          partToggle.textContent = collapsed ? '+' : '-';
+          partToggle.setAttribute('aria-label', collapsed ? '커스터마이저 펼치기' : '커스터마이저 접기');
+          partToggle.title = collapsed ? '펼치기' : '접기';
+          partToggle.setAttribute('aria-expanded', String(!collapsed));
+        };
+        partToggle.addEventListener('click', () => requestAnimationFrame(syncPartToggle));
+        syncPartToggle();
+      }
+    })();
+  </script>
 </body>
 </html>
