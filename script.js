@@ -80,16 +80,15 @@ const darkMat = new THREE.MeshStandardMaterial({
 });
 
 const glassMat = new THREE.MeshPhysicalMaterial({
-    color: 0xf9fcff,
-    transmission: 0.9,
+    color: 0xcbd3de,
     transparent: true,
-    opacity: 0.28,
-    roughness: 0.08,
-    thickness: 0.45,
+    opacity: 0.24,
+    roughness: 0.2,
     ior: 1.45,
-    side: THREE.DoubleSide,
+    side: THREE.FrontSide,
     depthWrite: false
 });
+glassMat.envMapIntensity = 0.12;
 
 const creamMat = new THREE.MeshStandardMaterial({
     color: 0xffe9ad,
