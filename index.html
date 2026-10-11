@@ -20,7 +20,43 @@
       position: relative;
       width: 100%;
       height: 100%;
+      z-index: 2;
+    }
+    #screenImageBackLayer,
+    #screenImageFrontLayer {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    #screenImageBackLayer {
       z-index: 1;
+    }
+    #screenImageFrontLayer {
+      z-index: 3;
+    }
+    body.back-screen-image-selected #app {
+      pointer-events: none;
+    }
+    .screen-image {
+      position: absolute;
+      display: block;
+      width: min(38vw, 420px);
+      max-width: calc(100vw - 24px);
+      max-height: 55vh;
+      object-fit: contain;
+      cursor: grab;
+      pointer-events: none;
+      touch-action: none;
+      user-select: none;
+      filter: drop-shadow(0 8px 18px rgba(18, 26, 40, .2));
+    }
+    .screen-image.selected {
+      outline: 2px solid #4b8cff;
+      outline-offset: 2px;
+    }
+    .screen-image.dragging {
+      cursor: grabbing;
     }
     #cameraFeed {
       position: fixed;
@@ -184,6 +220,75 @@
     }
     .view-controls button + button {
       margin-left: 0;
+    }
+    .screen-image-controls {
+      position: fixed;
+      z-index: 15;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      width: min(300px, calc(100vw - 16px));
+      padding: 7px;
+      border: 1px solid rgba(45, 55, 72, .18);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .92);
+      box-shadow: 0 6px 20px rgba(30, 45, 70, .2);
+      backdrop-filter: blur(12px);
+    }
+    .screen-image-controls[hidden] {
+      display: none;
+    }
+    .screen-image-controls.locked {
+      width: max-content;
+      padding: 0;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      box-shadow: none;
+      backdrop-filter: none;
+    }
+    .screen-image-controls button {
+      min-width: 32px;
+      height: 32px;
+      margin: 0;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 6px;
+      background: #222836;
+      color: white;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .screen-image-controls #screenImageLayerToggle {
+      flex: 1;
+      white-space: nowrap;
+    }
+    .screen-image-controls.locked #screenImageLockToggle {
+      width: 132px;
+      height: 38px;
+      padding: 0 12px;
+      border: 1px solid rgba(45, 55, 72, .18);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 6px 18px rgba(30, 45, 70, .2);
+      color: #222836;
+      font-weight: 700;
+    }
+    body.dark-mode .screen-image-controls {
+      border-color: rgba(220, 230, 250, .18);
+      background: rgba(22, 27, 38, .94);
+      color: #e6eaf2;
+    }
+    body.dark-mode .screen-image-controls button {
+      background: #e6eaf2;
+      color: #222836;
+    }
+    body.dark-mode .screen-image-controls.locked #screenImageLockToggle {
+      background: #fff;
+      color: #222836;
+    }
+    body.capture-mode .screen-image-controls {
+      display: none;
     }
     .camera-height-controls {
       position: fixed;
@@ -468,16 +573,7 @@
         font-size: 10px;
       }
       .camera-height-controls {
-        left: 8px;
-      }
-      .camera-height-controls button {
-        width: 36px;
-        font-size: 18px;
-      }
-      .camera-height-controls {
-        grid-template-columns: repeat(3, 36px);
-        grid-template-rows: repeat(3, 36px);
-        gap: 3px;
+        display: none;
       }
       .part-panel {
         top: 10px;
@@ -537,6 +633,8 @@
 <body>
   <video id="cameraFeed" autoplay playsinline muted></video>
   <div id="app"></div>
+  <div id="screenImageBackLayer" aria-label="응원봉 뒤 이미지"></div>
+  <div id="screenImageFrontLayer" aria-label="응원봉 앞 이미지"></div>
   <div class="camera-height-controls" id="cameraHeightControls" aria-label="시점과 위치 이동">
     <button type="button" data-axis="y" data-direction="1" aria-label="카메라 시점 올리기" title="시점 올리기">▲</button>
     <button type="button" data-axis="x" data-direction="-1" aria-label="카메라 시점 왼쪽" title="시점 왼쪽">◀</button>
@@ -566,12 +664,23 @@
       <button id="frontModeToggle" type="button" aria-pressed="false">정면 조작 OFF</button>
       <button id="cameraToggle" type="button" aria-pressed="false">카메라 켜기</button>
       <button id="cameraFacingToggle" type="button" hidden>전면으로 전환</button>
+      <button id="addScreenImage" type="button">이미지 추가</button>
       <button id="captureModeToggle" type="button">캡쳐 모드</button>
     </div>
+    <input id="screenImageInput" type="file" accept="image/*" multiple hidden />
   </div>
   <div id="captureControls" hidden>
     <button id="exitCaptureMode" type="button">모드 OFF</button>
     <button id="takeCapture" type="button">화면 캡쳐</button>
+  </div>
+  <div class="screen-image-controls" id="screenImageControls" hidden aria-label="선택한 이미지 조절">
+    <button type="button" data-image-action="scale-down" data-image-edit-control aria-label="이미지 축소" title="축소">−</button>
+    <button type="button" data-image-action="scale-up" data-image-edit-control aria-label="이미지 확대" title="확대">+</button>
+    <button type="button" data-image-action="rotate-left" data-image-edit-control aria-label="이미지 왼쪽 회전" title="왼쪽 회전">↶</button>
+    <button type="button" data-image-action="rotate-right" data-image-edit-control aria-label="이미지 오른쪽 회전" title="오른쪽 회전">↷</button>
+    <button type="button" id="screenImageLayerToggle" data-image-action="toggle-layer" data-image-edit-control>뒤로 보내기</button>
+    <button type="button" data-image-action="remove" data-image-edit-control aria-label="이미지 삭제" title="삭제">삭제</button>
+    <button type="button" id="screenImageLockToggle" data-image-action="toggle-lock" aria-label="이미지 잠금">잠금</button>
   </div>
   <div class="part-panel" id="partPanel">
     <div class="part-panel-header">
@@ -1373,6 +1482,17 @@
     const cameraFeed = document.getElementById('cameraFeed');
     const cameraToggle = document.getElementById('cameraToggle');
     const cameraFacingToggle = document.getElementById('cameraFacingToggle');
+    const screenImageBackLayer = document.getElementById('screenImageBackLayer');
+    const screenImageFrontLayer = document.getElementById('screenImageFrontLayer');
+    const screenImageControls = document.getElementById('screenImageControls');
+    const screenImageLayerToggle = document.getElementById('screenImageLayerToggle');
+    const screenImageLockToggle = document.getElementById('screenImageLockToggle');
+    const addScreenImageButton = document.getElementById('addScreenImage');
+    const screenImageInput = document.getElementById('screenImageInput');
+    let selectedScreenImage = null;
+    let activeScreenImageDrag = null;
+    const screenImageAlphaMasks = new WeakMap();
+    const screenImageRemovers = new WeakMap();
     const viewHint = document.getElementById('viewHint');
     const lightstickBaseY = lightstick.position.y;
     let frontMode = false;
@@ -1388,6 +1508,58 @@
 
     captureModeToggle.addEventListener('click', () => setCaptureMode(true));
     exitCaptureMode.addEventListener('click', () => setCaptureMode(false));
+
+    function screenImageContainsPoint(image, clientX, clientY) {
+      const alphaMask = screenImageAlphaMasks.get(image);
+      if (!alphaMask) return false;
+      const width = image.offsetWidth;
+      const height = image.offsetHeight;
+      if (!width || !height) return false;
+
+      const bounds = image.getBoundingClientRect();
+      const scale = Number(image.dataset.scale) || 1;
+      const rotation = THREE.MathUtils.degToRad(Number(image.dataset.rotation) || 0);
+      const deltaX = clientX - (bounds.left + bounds.width / 2);
+      const deltaY = clientY - (bounds.top + bounds.height / 2);
+      const localX = width / 2 + (Math.cos(rotation) * deltaX + Math.sin(rotation) * deltaY) / scale;
+      const localY = height / 2 + (-Math.sin(rotation) * deltaX + Math.cos(rotation) * deltaY) / scale;
+      const fitScale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
+      const renderedWidth = image.naturalWidth * fitScale;
+      const renderedHeight = image.naturalHeight * fitScale;
+      const pixelX = Math.floor((localX - (width - renderedWidth) / 2) / renderedWidth * image.naturalWidth);
+      const pixelY = Math.floor((localY - (height - renderedHeight) / 2) / renderedHeight * image.naturalHeight);
+      if (pixelX < 0 || pixelY < 0 || pixelX >= image.naturalWidth || pixelY >= image.naturalHeight) return false;
+      return alphaMask[pixelY * image.naturalWidth + pixelX] > 12;
+    }
+
+    function findScreenImageAt(clientX, clientY) {
+      for (const layer of [screenImageFrontLayer, screenImageBackLayer]) {
+        const images = [...layer.querySelectorAll('.screen-image')].reverse();
+        const hit = images.find((image) => screenImageContainsPoint(image, clientX, clientY));
+        if (hit) return hit;
+      }
+      return null;
+    }
+
+    document.addEventListener('pointermove', (event) => {
+      const drag = activeScreenImageDrag;
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      const deltaX = event.clientX - drag.startX;
+      const deltaY = event.clientY - drag.startY;
+      if (!drag.moved && Math.hypot(deltaX, deltaY) < 3) return;
+      drag.moved = true;
+      event.preventDefault();
+      event.stopPropagation();
+      drag.image.style.left = `${THREE.MathUtils.clamp(drag.startLeft + deltaX, 0, innerWidth - drag.image.offsetWidth)}px`;
+      drag.image.style.top = `${THREE.MathUtils.clamp(drag.startTop + deltaY, 0, innerHeight - drag.image.offsetHeight)}px`;
+      positionScreenImageControls();
+    }, true);
+
+    const finishScreenImageDrag = (event) => {
+      if (activeScreenImageDrag?.pointerId === event.pointerId) activeScreenImageDrag = null;
+    };
+    document.addEventListener('pointerup', finishScreenImageDrag, true);
+    document.addEventListener('pointercancel', finishScreenImageDrag, true);
 
     function stopCamera() {
       cameraRequestId += 1;
@@ -1476,15 +1648,208 @@
       await startCamera();
     });
 
+    function selectScreenImage(image) {
+      screenImageBackLayer.querySelectorAll('.screen-image').forEach((item) => item.classList.remove('selected'));
+      screenImageFrontLayer.querySelectorAll('.screen-image').forEach((item) => item.classList.remove('selected'));
+      selectedScreenImage = image;
+      if (image) {
+        image.classList.add('selected');
+        image.focus({ preventScroll: true });
+      }
+      document.body.classList.toggle('back-screen-image-selected', image?.dataset.layer === 'back');
+      screenImageControls.hidden = !image;
+      if (image) {
+        const locked = image.dataset.locked === 'true';
+        screenImageControls.classList.toggle('locked', locked);
+        screenImageControls.querySelectorAll('[data-image-edit-control]').forEach((button) => {
+          button.hidden = locked;
+        });
+        screenImageLockToggle.textContent = locked ? '잠금 해제' : '잠금';
+        screenImageLockToggle.setAttribute('aria-label', locked ? '이미지 잠금 해제' : '이미지 잠금');
+        screenImageLayerToggle.textContent = image.dataset.layer === 'back' ? '앞으로 가져오기' : '뒤로 보내기';
+        positionScreenImageControls();
+      }
+    }
+
+    document.addEventListener('pointerdown', (event) => {
+      if (event.target instanceof Element && event.target.closest('#screenImageControls')) return;
+      const hitImage = findScreenImageAt(event.clientX, event.clientY);
+      if (hitImage) {
+        event.preventDefault();
+        event.stopPropagation();
+        selectScreenImage(hitImage);
+        if (hitImage.dataset.locked !== 'true' && event.button === 0) {
+          activeScreenImageDrag = {
+            image: hitImage,
+            pointerId: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            startLeft: Number.parseFloat(hitImage.style.left) || 0,
+            startTop: Number.parseFloat(hitImage.style.top) || 0,
+            moved: false
+          };
+        }
+        return;
+      }
+      if (selectedScreenImage) selectScreenImage(null);
+    }, true);
+
+    function positionScreenImageControls() {
+      if (!selectedScreenImage || screenImageControls.hidden) return;
+      const imageBounds = selectedScreenImage.getBoundingClientRect();
+      const controlsHeight = screenImageControls.offsetHeight;
+      const top = imageBounds.bottom + controlsHeight + 8 <= innerHeight
+        ? imageBounds.bottom + 8
+        : imageBounds.top - controlsHeight - 8;
+      screenImageControls.style.left = `${THREE.MathUtils.clamp(
+        imageBounds.left + (imageBounds.width - screenImageControls.offsetWidth) / 2,
+        8,
+        innerWidth - screenImageControls.offsetWidth - 8
+      )}px`;
+      screenImageControls.style.top = `${THREE.MathUtils.clamp(top, 8, innerHeight - controlsHeight - 8)}px`;
+    }
+
+    function addScreenImage(file) {
+      if (!file.type.startsWith('image/')) return;
+      const objectUrl = URL.createObjectURL(file);
+      const image = new Image();
+      image.className = 'screen-image';
+      image.dataset.layer = 'front';
+      image.dataset.scale = '1';
+      image.dataset.rotation = '0';
+      image.dataset.locked = 'false';
+      image.src = objectUrl;
+      image.alt = file.name;
+      image.title = '드래그하여 이동 · 클릭해 조절 · 두 번 클릭해 삭제';
+      image.draggable = false;
+      image.tabIndex = 0;
+      screenImageFrontLayer.appendChild(image);
+      selectScreenImage(null);
+
+      image.addEventListener('load', () => {
+        try {
+          const maskCanvas = document.createElement('canvas');
+          maskCanvas.width = image.naturalWidth;
+          maskCanvas.height = image.naturalHeight;
+          const maskContext = maskCanvas.getContext('2d', { willReadFrequently: true });
+          maskContext.drawImage(image, 0, 0);
+          const rgba = maskContext.getImageData(0, 0, image.naturalWidth, image.naturalHeight).data;
+          const alphaMask = new Uint8Array(image.naturalWidth * image.naturalHeight);
+          for (let index = 0; index < alphaMask.length; index += 1) alphaMask[index] = rgba[index * 4 + 3];
+          screenImageAlphaMasks.set(image, alphaMask);
+        } catch (error) {
+          console.error('이미지 투명 영역을 분석하지 못했습니다.', error);
+          screenImageAlphaMasks.set(image, null);
+        }
+        const bounds = image.getBoundingClientRect();
+        const imageIndex = [...screenImageFrontLayer.children].indexOf(image);
+        image.style.left = `${THREE.MathUtils.clamp((innerWidth - bounds.width) / 2 + imageIndex * 20, 0, innerWidth - bounds.width)}px`;
+        image.style.top = `${THREE.MathUtils.clamp((innerHeight - bounds.height) / 2 + imageIndex * 20, 0, innerHeight - bounds.height)}px`;
+        if (selectedScreenImage === image) positionScreenImageControls();
+      }, { once: true });
+      image.addEventListener('error', () => {
+        URL.revokeObjectURL(objectUrl);
+        image.remove();
+        if (selectedScreenImage === image) selectScreenImage(null);
+      }, { once: true });
+
+      const removeImage = () => {
+        if (image.dataset.locked === 'true') return;
+        image.remove();
+        URL.revokeObjectURL(objectUrl);
+        if (selectedScreenImage === image) selectScreenImage(null);
+      };
+      screenImageRemovers.set(image, removeImage);
+      image.addEventListener('keydown', (event) => {
+        if (image.dataset.locked === 'true') return;
+        if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+        event.preventDefault();
+        removeImage();
+      });
+    }
+
+    document.addEventListener('dblclick', (event) => {
+      const image = findScreenImageAt(event.clientX, event.clientY);
+      if (!image || image.dataset.locked === 'true') return;
+      event.preventDefault();
+      event.stopPropagation();
+      screenImageRemovers.get(image)?.();
+    }, true);
+
+    addScreenImageButton.addEventListener('click', () => screenImageInput.click());
+    screenImageInput.addEventListener('change', () => {
+      Array.from(screenImageInput.files || []).forEach(addScreenImage);
+      screenImageInput.value = '';
+    });
+
+    screenImageControls.addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-image-action]');
+      if (!button || !selectedScreenImage) return;
+      const image = selectedScreenImage;
+      const action = button.dataset.imageAction;
+      const locked = image.dataset.locked === 'true';
+      if (locked && action !== 'toggle-lock') return;
+      const scale = Number(image.dataset.scale);
+      const rotation = Number(image.dataset.rotation);
+
+      if (action === 'toggle-lock') {
+        image.dataset.locked = String(!locked);
+        selectScreenImage(image);
+        return;
+      }
+      if (action === 'scale-down' || action === 'scale-up') {
+        image.dataset.scale = String(THREE.MathUtils.clamp(scale + (action === 'scale-up' ? 0.1 : -0.1), 0.2, 3));
+      } else if (action === 'rotate-left' || action === 'rotate-right') {
+        image.dataset.rotation = String(rotation + (action === 'rotate-right' ? 15 : -15));
+      } else if (action === 'toggle-layer') {
+        const nextLayer = image.dataset.layer === 'back' ? 'front' : 'back';
+        (nextLayer === 'back' ? screenImageBackLayer : screenImageFrontLayer).appendChild(image);
+        image.dataset.layer = nextLayer;
+        selectScreenImage(image);
+      } else if (action === 'remove') {
+        image.dispatchEvent(new Event('dblclick'));
+        return;
+      }
+
+      image.style.transform = `scale(${image.dataset.scale}) rotate(${image.dataset.rotation}deg)`;
+      positionScreenImageControls();
+    });
+
+    function drawScreenImages(layer, context) {
+      layer.querySelectorAll('.screen-image').forEach((image) => {
+        if (!image.complete || !image.naturalWidth) return;
+        const width = image.offsetWidth;
+        const height = image.offsetHeight;
+        const left = Number.parseFloat(image.style.left) || 0;
+        const top = Number.parseFloat(image.style.top) || 0;
+        const scale = Number(image.dataset.scale) || 1;
+        const rotation = THREE.MathUtils.degToRad(Number(image.dataset.rotation) || 0);
+        context.save();
+        context.translate(left + width / 2, top + height / 2);
+        context.rotate(rotation);
+        context.scale(scale, scale);
+        context.drawImage(image, -width / 2, -height / 2, width, height);
+        context.restore();
+      });
+    }
+
     async function captureScreen() {
+      const width = innerWidth;
+      const height = innerHeight;
+      const captureScale = Math.min(
+        Math.max(devicePixelRatio || 1, 2),
+        3,
+        8192 / width,
+        8192 / height,
+        Math.sqrt(40000000 / (width * height))
+      );
       const captureCanvas = document.createElement('canvas');
-      captureCanvas.width = innerWidth;
-      captureCanvas.height = innerHeight;
+      captureCanvas.width = Math.round(width * captureScale);
+      captureCanvas.height = Math.round(height * captureScale);
       const context = captureCanvas.getContext('2d');
       if (!context) throw new Error('캡쳐용 캔버스를 준비하지 못했습니다.');
 
-      const width = captureCanvas.width;
-      const height = captureCanvas.height;
+      context.scale(captureScale, captureScale);
       if (cameraStream && cameraFeed.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
         if (cameraFacingMode === 'user') {
           context.save();
@@ -1507,8 +1872,19 @@
         context.fillStyle = background;
         context.fillRect(0, 0, width, height);
       }
-      renderer.render(scene, camera);
-      context.drawImage(renderer.domElement, 0, 0, width, height);
+      drawScreenImages(screenImageBackLayer, context);
+      const previousPixelRatio = renderer.getPixelRatio();
+      const previousRendererSize = renderer.getSize(new THREE.Vector2());
+      try {
+        renderer.setPixelRatio(captureScale);
+        renderer.setSize(width, height, false);
+        renderer.render(scene, camera);
+        context.drawImage(renderer.domElement, 0, 0, width, height);
+      } finally {
+        renderer.setPixelRatio(previousPixelRatio);
+        renderer.setSize(previousRendererSize.x, previousRendererSize.y, false);
+      }
+      drawScreenImages(screenImageFrontLayer, context);
 
       if (matchMedia('(max-width: 600px)').matches) {
         const phoneTop = document.querySelector('.phone-top');
@@ -1582,30 +1958,44 @@
       controls.enabled = !front;
     }
 
+    function screenPixelOffsetAt(worldPosition, deltaX, deltaY = 0) {
+      camera.updateMatrixWorld(true);
+      const projected = worldPosition.clone().project(camera);
+      projected.x += deltaX * 2 / innerWidth;
+      projected.y -= deltaY * 2 / innerHeight;
+      return projected.unproject(camera).sub(worldPosition);
+    }
+
     cameraHeightControls.addEventListener('click', (event) => {
       const button = event.target.closest('button[data-direction]');
       if (!button) return;
       const direction = Number(button.dataset.direction);
       const axis = button.dataset.axis;
       if (frontMode) {
-        const property = axis === 'x' ? 'x' : 'y';
-        const basePosition = property === 'x' ? 0 : lightstickBaseY;
-        lightstick.position[property] = THREE.MathUtils.clamp(
-          lightstick.position[property] + direction * 0.25,
-          basePosition - 1.5,
-          basePosition + 1.5
-        );
+        if (axis === 'x') {
+          lightstick.updateWorldMatrix(true, true);
+          const screenAnchor = new THREE.Box3().setFromObject(lightstick).getCenter(new THREE.Vector3());
+          const movement = screenPixelOffsetAt(screenAnchor, -direction * 40);
+          lightstick.position.add(movement);
+        } else {
+          lightstick.position.y = THREE.MathUtils.clamp(
+            lightstick.position.y - direction * 0.25,
+            lightstickBaseY - 1.5,
+            lightstickBaseY + 1.5
+          );
+        }
         return;
       }
       if (axis === 'x') {
-        const horizontalChange = direction * 0.25;
-        camera.position.x += horizontalChange;
-        controls.target.x += horizontalChange;
+        camera.updateMatrixWorld(true);
+        const movement = screenPixelOffsetAt(controls.target, -direction * 40);
+        camera.position.add(movement);
+        controls.target.add(movement);
         controls.update();
         return;
       }
       const targetY = controls.target.y;
-      const nextTargetY = THREE.MathUtils.clamp(targetY + direction * 0.25, -2.5, 4.5);
+      const nextTargetY = THREE.MathUtils.clamp(targetY - direction * 0.25, -2.5, 4.5);
       const heightChange = nextTargetY - targetY;
       camera.position.y += heightChange;
       controls.target.y = nextTargetY;
@@ -1654,6 +2044,7 @@
     const pointer = new THREE.Vector2();
 
     renderer.domElement.addEventListener('pointerdown', (event) => {
+      if (selectedScreenImage?.dataset.layer === 'back') selectScreenImage(null);
       if (frontMode) {
         if (event.button !== 0) return;
         event.preventDefault();
