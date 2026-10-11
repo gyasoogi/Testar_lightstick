@@ -698,11 +698,17 @@ export function setupInteractionControls(context) {
         crystalLight.intensity = 8 + Math.sin(t * 2.4) * 1;
         const auraSize = 4.1 + Math.sin(t * 2.4) * 0.28;
         crystalAura.scale.set(auraSize, auraSize, 1);
-        reflections.forEach((reflection) => {
+        const isCompactViewport = innerWidth <= 600;
+        reflections.forEach((reflection, index) => {
             const shimmer = 0.55 + Math.sin(t * 2.1 + reflection.userData.phase) * 0.35;
-            reflection.material.opacity = reflection.userData.baseOpacity * shimmer;
+            const isSoftenedOut = isCompactViewport && index % 2 === 1;
+            reflection.material.opacity = isSoftenedOut
+                ? 0
+                : reflection.userData.baseOpacity * shimmer * (isCompactViewport ? 0.65 : 1);
             const pulse = 0.85 + shimmer * 0.3;
-            reflection.scale.setScalar(reflection.userData.baseSize * pulse);
+            reflection.scale.setScalar(
+                reflection.userData.baseSize * pulse * (isCompactViewport ? 1.6 : 1)
+            );
         });
         }
     

@@ -1049,6 +1049,7 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
             sparkle.scale.set(size, size, 1);
 
             sparkle.userData.orbit = {
+                size,
                 angle: orbitRandom(index + 141) * Math.PI * 2,
 
                 radius: 2 + orbitRandom(index + 161) * 2.5,
@@ -1196,7 +1197,8 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
                 (Math.sin(elapsedTime * 2.4 + orbit.angle) + 1) * 0.16;
         });
 
-        paperPlaneFleet.userData.sparkles.forEach((sparkle) => {
+        const isCompactViewport = innerWidth <= 600;
+        paperPlaneFleet.userData.sparkles.forEach((sparkle, index) => {
             const orbit = sparkle.userData.orbit;
 
             const angle = orbit.angle + elapsedTime * orbit.speed;
@@ -1217,7 +1219,11 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
                 Math.sin(angle) * orbit.radius
             );
 
-            sparkle.material.opacity = 0.18 + flicker * 0.72;
+            const isSoftenedOut = isCompactViewport && index % 2 === 1;
+            sparkle.scale.setScalar(orbit.size * (isCompactViewport ? 1.6 : 1));
+            sparkle.material.opacity = isSoftenedOut
+                ? 0
+                : (0.18 + flicker * 0.72) * (isCompactViewport ? 0.65 : 1);
         });
     }
 
