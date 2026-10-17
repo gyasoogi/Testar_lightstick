@@ -73,6 +73,8 @@ export function setupInteractionControls(context) {
     const viewHint = document.getElementById('viewHint');
     const lightstickBaseY = lightstick.position.y;
     let frontMode = false;
+    let activeFrontPointerId = null;
+    let lastPointerX = 0;
     let captureMode = false;
     let frameEnabled = true;
     let captureModeOrientationAlertShown = false;
@@ -762,6 +764,11 @@ export function setupInteractionControls(context) {
     renderer.domElement.addEventListener('pointerdown', (event) => {
         if (selectedScreenImage?.dataset.layer === 'back') selectScreenImage(null);
         if (frontMode) {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        activeFrontPointerId = event.pointerId;
+        lastPointerX = event.clientX;
+        renderer.domElement.setPointerCapture(event.pointerId);
         return;
         }
         const rect = renderer.domElement.getBoundingClientRect();
@@ -771,6 +778,24 @@ export function setupInteractionControls(context) {
         const hits = raycaster.intersectObject(button, true);
         if (hits.length) setLightState(!lightOn);
     });
+
+    renderer.domElement.addEventListener('pointermove', (event) => {
+        if (!frontMode || event.pointerId !== activeFrontPointerId) return;
+        event.preventDefault();
+        const deltaX = event.clientX - lastPointerX;
+        lastPointerX = event.clientX;
+        lightstick.rotation.y += deltaX * 0.004;
+    });
+
+    const finishFrontDrag = (event) => {
+        if (event.pointerId !== activeFrontPointerId) return;
+        activeFrontPointerId = null;
+        if (renderer.domElement.hasPointerCapture(event.pointerId)) {
+            renderer.domElement.releasePointerCapture(event.pointerId);
+        }
+    };
+    renderer.domElement.addEventListener('pointerup', finishFrontDrag);
+    renderer.domElement.addEventListener('pointercancel', finishFrontDrag);
     
     // ---------- Animation ----------
     const clock = new THREE.Clock();
