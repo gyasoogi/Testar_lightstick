@@ -156,6 +156,15 @@
         setMenu(false);
       });
       let panelDrag = null;
+      const keepPartPanelOnScreen = () => {
+        const maxLeft = Math.max(8, window.innerWidth - partPanel.offsetWidth - 8);
+        const maxTop = Math.max(8, window.innerHeight - partPanel.offsetHeight - 8);
+        const left = Number.parseFloat(partPanel.style.left) || partPanel.getBoundingClientRect().left;
+        const top = Number.parseFloat(partPanel.style.top) || partPanel.getBoundingClientRect().top;
+        partPanel.style.left = `${Math.min(maxLeft, Math.max(8, left))}px`;
+        partPanel.style.top = `${Math.min(maxTop, Math.max(8, top))}px`;
+        partPanel.style.right = 'auto';
+      };
       partHeader.addEventListener('pointerdown', (event) => {
         if (event.target.closest('button') || event.button !== 0) return;
         const bounds = partPanel.getBoundingClientRect();
@@ -172,16 +181,18 @@
       });
       partHeader.addEventListener('pointermove', (event) => {
         if (!panelDrag || event.pointerId !== panelDrag.pointerId) return;
-        const maxLeft = Math.max(0, window.innerWidth - partPanel.offsetWidth);
-        const maxTop = Math.max(0, window.innerHeight - partPanel.offsetHeight);
-        partPanel.style.left = `${Math.min(maxLeft, Math.max(0, event.clientX - panelDrag.offsetX))}px`;
-        partPanel.style.top = `${Math.min(maxTop, Math.max(0, event.clientY - panelDrag.offsetY))}px`;
+        partPanel.style.left = `${event.clientX - panelDrag.offsetX}px`;
+        partPanel.style.top = `${event.clientY - panelDrag.offsetY}px`;
+        keepPartPanelOnScreen();
       });
       const finishPanelDrag = (event) => {
         if (panelDrag?.pointerId === event.pointerId) panelDrag = null;
       };
       partHeader.addEventListener('pointerup', finishPanelDrag);
       partHeader.addEventListener('pointercancel', finishPanelDrag);
+      window.addEventListener('resize', () => {
+        if (partPanel.style.left) keepPartPanelOnScreen();
+      });
       if (partToggle && partPanel && partContent) {
         const syncPartToggle = () => {
           const collapsed = partPanel.classList.contains('collapsed');
