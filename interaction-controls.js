@@ -1234,9 +1234,13 @@ export function setupInteractionControls(context) {
             : 0;
         const activeColor = lightColorInputs[colorIndex]?.value || phoneLightColorInput.value;
         if (activeColor !== `#${lightColor.getHexString()}`) applyLightColor(activeColor);
-        const blinkIntensity = blinkEnabled && lightColorInputs.length === 1
-            ? (softBlink ? softBlinkIntensity : (isHardBlinkOn ? 1 : 0))
-            : 1;
+        const blinkIntensity = !blinkEnabled
+            ? 1
+            : softBlink
+                ? (lightColorInputs.length > 1
+                    ? 0.2 + softBlinkIntensity * 0.8
+                    : softBlinkIntensity)
+                : (lightColorInputs.length === 1 && !isHardBlinkOn ? 0 : 1);
         const isLightVisible = lightOn && blinkIntensity > 0;
         updateSpecialEffects({ lightOn: isLightVisible, darkModeOn, elapsedTime: t });
     
