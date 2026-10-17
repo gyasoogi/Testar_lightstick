@@ -1081,7 +1081,7 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
             heart.scale.set(size, size, 1);
             heart.userData.orbit = {
                 angle: orbitRandom(index + 341) * Math.PI * 2,
-                radius: 1.8 + orbitRandom(index + 361) * 1.1,
+                radius: 0.85 + orbitRandom(index + 361) * 0.55,
                 speed: 0.05 + orbitRandom(index + 381) * 0.08,
                 height: -2.25 + orbitRandom(index + 401) * 4.6,
                 bobAmplitude: 0.14 + orbitRandom(index + 421) * 0.24,
