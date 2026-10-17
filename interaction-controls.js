@@ -185,6 +185,7 @@ export function setupInteractionControls(context) {
     });
     const screenImageControls = document.getElementById('screenImageControls');
     const screenImageLayerToggle = document.getElementById('screenImageLayerToggle');
+    const screenImageShadowToggle = document.getElementById('screenImageShadowToggle');
     const screenImageLockToggle = document.getElementById('screenImageLockToggle');
     const addScreenImageButton = document.getElementById('addScreenImage');
     const screenImageInput = document.getElementById('screenImageInput');
@@ -193,6 +194,7 @@ export function setupInteractionControls(context) {
     const backgroundImageInput = document.getElementById('backgroundImageInput');
     let backgroundImageUrl = null;
     let selectedScreenImage = null;
+    let activeScreenImageDrag = null;
     const screenImageAlphaMasks = new WeakMap();
     const screenImageRemovers = new WeakMap();
     const viewHint = document.getElementById('viewHint');
@@ -540,7 +542,12 @@ export function setupInteractionControls(context) {
         });
         screenImageLockToggle.textContent = locked ? '잠금 해제' : '잠금';
         screenImageLockToggle.setAttribute('aria-label', locked ? '이미지 잠금 해제' : '이미지 잠금');
-        screenImageLayerToggle.textContent = image.dataset.layer === 'back' ? '앞으로 가져오기' : '뒤로 보내기';
+        screenImageLockToggle.title = locked ? '잠금 해제' : '잠금';
+        screenImageLayerToggle.textContent = image.dataset.layer === 'back' ? '앞으로' : '뒤로';
+        screenImageLayerToggle.setAttribute('aria-label', image.dataset.layer === 'back' ? '앞으로 가져오기' : '뒤로 보내기');
+        const hasShadow = image.dataset.shadow !== 'false';
+        screenImageShadowToggle.textContent = hasShadow ? '그림자 끄기' : '그림자 켜기';
+        screenImageShadowToggle.setAttribute('aria-pressed', String(hasShadow));
         positionScreenImageControls();
         }
     }
@@ -552,10 +559,39 @@ export function setupInteractionControls(context) {
         event.preventDefault();
         event.stopPropagation();
         selectScreenImage(hitImage);
+        if (event.button === 0 && hitImage.dataset.locked !== 'true') {
+            activeScreenImageDrag = {
+                image: hitImage,
+                pointerId: event.pointerId,
+                startX: event.clientX,
+                startY: event.clientY,
+                startLeft: Number.parseFloat(hitImage.style.left) || 0,
+                startTop: Number.parseFloat(hitImage.style.top) || 0
+            };
+            hitImage.classList.add('dragging');
+        }
         return;
         }
         if (selectedScreenImage) selectScreenImage(null);
     }, true);
+
+    document.addEventListener('pointermove', (event) => {
+        if (!activeScreenImageDrag || event.pointerId !== activeScreenImageDrag.pointerId) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const { image, startX, startY, startLeft, startTop } = activeScreenImageDrag;
+        image.style.left = `${startLeft + event.clientX - startX}px`;
+        image.style.top = `${startTop + event.clientY - startY}px`;
+        positionScreenImageControls();
+    }, true);
+
+    const finishScreenImageDrag = (event) => {
+        if (!activeScreenImageDrag || event.pointerId !== activeScreenImageDrag.pointerId) return;
+        activeScreenImageDrag.image.classList.remove('dragging');
+        activeScreenImageDrag = null;
+    };
+    document.addEventListener('pointerup', finishScreenImageDrag, true);
+    document.addEventListener('pointercancel', finishScreenImageDrag, true);
     
     function positionScreenImageControls() {
         if (!selectedScreenImage || screenImageControls.hidden) return;
@@ -580,6 +616,7 @@ export function setupInteractionControls(context) {
         image.dataset.layer = 'front';
         image.dataset.scale = '1';
         image.dataset.rotation = '0';
+        image.dataset.shadow = 'true';
         image.dataset.locked = 'false';
         image.src = objectUrl;
         image.alt = file.name;
@@ -699,6 +736,11 @@ export function setupInteractionControls(context) {
         selectScreenImage(image);
         return;
         }
+        if (action === 'toggle-shadow') {
+        image.dataset.shadow = String(image.dataset.shadow === 'false');
+        selectScreenImage(image);
+        return;
+        }
         if (action === 'scale-down' || action === 'scale-up') {
         image.dataset.scale = String(THREE.MathUtils.clamp(scale + (action === 'scale-up' ? 0.1 : -0.1), 0.2, 3));
         } else if (action === 'rotate-left' || action === 'rotate-right') {
@@ -730,6 +772,11 @@ export function setupInteractionControls(context) {
         context.translate(left + width / 2, top + height / 2);
         context.rotate(rotation);
         context.scale(scale, scale);
+        if (image.dataset.shadow !== 'false') {
+            context.shadowColor = 'rgba(18, 26, 40, .2)';
+            context.shadowBlur = 18;
+            context.shadowOffsetY = 8;
+        }
         context.drawImage(image, -width / 2, -height / 2, width, height);
         context.restore();
         });
@@ -861,7 +908,7 @@ export function setupInteractionControls(context) {
             context.restore();
         }
         } else if (frameEnabled) {
-        const cornerWidth = Math.min(width * 0.38, height * 0.5);
+        const cornerWidth = Math.min(width * 0.32, height * 0.42);
         const centerWidth = cornerWidth / 2;
         const desktopFrames = [
             { selector: '.desktop-left-top', x: 0, y: 0, width: cornerWidth },
@@ -1281,5 +1328,6 @@ export function setupInteractionControls(context) {
         camera.updateProjectionMatrix();
         renderer.setSize(innerWidth, innerHeight);
         showPhoneCaptureIntroForFirstPortraitEntry();
+        positionScreenImageControls();
     });
 }

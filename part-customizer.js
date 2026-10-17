@@ -176,6 +176,8 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
 
     const ribbonCombination = [...ribbonColors.keys()];
     const chaColorCombination = ['cha.html', 'kim.html', 'ryu.html'];
+    let moonBeaHeartEventEnabled = true;
+    let moonBeaBlushEventEnabled = true;
     const isChaKimPairCombination = (files) =>
         files.filter((file) => file === 'cha.html').length === 1 &&
         files.filter((file) => file === 'kim.html').length === 1 &&
@@ -539,16 +541,34 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
         moonModel.userData.beaCombinationBlushes = blushes;
     }
 
+    function getMoonBeaCombinationState() {
+        const selectedCharacters = [...selectedPartFiles.values()]
+            .map((file) => file.split('/').pop())
+            .filter(Boolean);
+        const hasMoonBeaPair =
+            selectedCharacters.includes('moon.html') &&
+            selectedCharacters.includes('bea.html');
+
+        return {
+            hasMoonBeaHeartCombination: hasMoonBeaPair &&
+                selectedCharacters.every((file) =>
+                    ['moon.html', 'bea.html', 'heart.html'].includes(file)
+                ),
+            hasMoonBeaBlushCombination: hasMoonBeaPair &&
+                selectedCharacters.every((file) =>
+                    ['moon.html', 'bea.html', 'heart.html', 'apple.html'].includes(file)
+                )
+        };
+    }
+
     function updateCombinationRibbons() {
         const selectedFiles = [...selectedPartFiles.values()]
             .map((file) => file.split('/').pop());
         const selectedCharacters = selectedFiles.filter(Boolean);
-        const hasMoonBeaBlushCombination =
-            selectedCharacters.includes('moon.html') &&
-            selectedCharacters.includes('bea.html') &&
-            selectedCharacters.every((file) =>
-                ['moon.html', 'bea.html', 'heart.html', 'apple.html'].includes(file)
-            );
+        const {
+            hasMoonBeaHeartCombination,
+            hasMoonBeaBlushCombination
+        } = getMoonBeaCombinationState();
 
         const hasRibbonCombination =
             selectedFiles.length === ribbonCombination.length &&
@@ -627,6 +647,14 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
         combinationTransformationToggle.checked = isTransformationEnabled;
         combinationTransformationToggle.nextElementSibling.textContent =
             `이벤트 ${isTransformationEnabled ? 'ON' : 'OFF'}`;
+        moonBeaHeartEventControl.hidden = !hasMoonBeaHeartCombination;
+        moonBeaHeartEventToggle.checked = moonBeaHeartEventEnabled;
+        moonBeaHeartEventToggle.nextElementSibling.textContent =
+            `이벤트 ${moonBeaHeartEventEnabled ? 'ON' : 'OFF'}`;
+        moonBeaBlushEventControl.hidden = !hasMoonBeaBlushCombination;
+        moonBeaBlushEventToggle.checked = moonBeaBlushEventEnabled;
+        moonBeaBlushEventToggle.nextElementSibling.textContent =
+            `이벤트 ${moonBeaBlushEventEnabled ? 'ON' : 'OFF'}`;
 
         loadedPartModels.forEach(
             ({ file, ribbon, model, foreheadMark }, slotId) => {
@@ -674,7 +702,11 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
             .find(({ file }) => file === 'bea.html')?.model;
         loadedPartModels.forEach(({ file, model }) => {
             if (file !== 'moon.html') return;
-            if (hasMoonBeaBlushCombination && beaModel) {
+            if (
+                hasMoonBeaBlushCombination &&
+                moonBeaBlushEventEnabled &&
+                beaModel
+            ) {
                 addMoonBeaBlushes(model, beaModel);
             } else {
                 removeMoonBeaBlushes(model);
@@ -691,6 +723,24 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
         document.getElementById('combinationTransformationToggle');
     const combinationTransformationControl =
         document.getElementById('combinationTransformationControl');
+    const moonBeaHeartEventToggle =
+        document.getElementById('moonBeaHeartEventToggle');
+    const moonBeaHeartEventControl =
+        document.getElementById('moonBeaHeartEventControl');
+    const moonBeaBlushEventToggle =
+        document.getElementById('moonBeaBlushEventToggle');
+    const moonBeaBlushEventControl =
+        document.getElementById('moonBeaBlushEventControl');
+
+    moonBeaHeartEventToggle.addEventListener('change', () => {
+        moonBeaHeartEventEnabled = moonBeaHeartEventToggle.checked;
+        updateCombinationRibbons();
+    });
+
+    moonBeaBlushEventToggle.addEventListener('change', () => {
+        moonBeaBlushEventEnabled = moonBeaBlushEventToggle.checked;
+        updateCombinationRibbons();
+    });
 
     combinationTransformationToggle.addEventListener('change', () => {
         const selectedFiles = [...selectedPartFiles.values()]
@@ -988,11 +1038,65 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
 
     let paperGlowTexture = null;
     let paperPlaneFleet = null;
+    let beaMoonHeartFleet = null;
 
     const orbitRandom = (seed) => {
         const value = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
         return value - Math.floor(value);
     };
+
+    function createBeaMoonHeartFleet() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const context = canvas.getContext('2d');
+
+        if (!context) {
+            throw new Error('조합 하트 이펙트를 준비하지 못했습니다.');
+        }
+
+        context.beginPath();
+        context.moveTo(32, 56);
+        context.bezierCurveTo(27, 51, 6, 36, 6, 21);
+        context.bezierCurveTo(6, 4, 27, 2, 32, 18);
+        context.bezierCurveTo(37, 2, 58, 4, 58, 21);
+        context.bezierCurveTo(58, 36, 37, 51, 32, 56);
+        context.fillStyle = '#ff9fc4';
+        context.fill();
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+
+        const fleet = new THREE.Group();
+        fleet.userData.hearts = Array.from({ length: 7 }, (_, index) => {
+            const material = new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true,
+                opacity: 0.3,
+                depthWrite: false
+            });
+            const heart = new THREE.Sprite(material);
+            const size = 0.095 + orbitRandom(index + 321) * 0.075;
+
+            heart.scale.set(size, size, 1);
+            heart.userData.orbit = {
+                angle: orbitRandom(index + 341) * Math.PI * 2,
+                radius: 1.8 + orbitRandom(index + 361) * 1.1,
+                speed: 0.05 + orbitRandom(index + 381) * 0.08,
+                height: -2.25 + orbitRandom(index + 401) * 4.6,
+                bobAmplitude: 0.14 + orbitRandom(index + 421) * 0.24,
+                bobSpeed: 0.45 + orbitRandom(index + 441) * 0.5,
+                phase: orbitRandom(index + 461) * Math.PI * 2,
+                size
+            };
+
+            fleet.add(heart);
+            return heart;
+        });
+
+        fleet.visible = false;
+        return fleet;
+    }
 
     function createPaperPlane(scale) {
         const shape = new THREE.Shape();
@@ -1183,6 +1287,41 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
 
         const selectedFile = (slotId) =>
             (selectedPartFiles.get(slotId) || '').split('/').pop();
+        const { hasMoonBeaHeartCombination } =
+            getMoonBeaCombinationState();
+        const hasMoonBeaCombination =
+            hasMoonBeaHeartCombination && moonBeaHeartEventEnabled;
+
+        if (!beaMoonHeartFleet && hasMoonBeaCombination) {
+            beaMoonHeartFleet = createBeaMoonHeartFleet();
+            chamber.add(beaMoonHeartFleet);
+        }
+
+        if (beaMoonHeartFleet) {
+            beaMoonHeartFleet.visible = hasMoonBeaCombination;
+
+            if (hasMoonBeaCombination) {
+                beaMoonHeartFleet.userData.hearts.forEach((heart) => {
+                    const orbit = heart.userData.orbit;
+                    const angle = orbit.angle + elapsedTime * orbit.speed;
+                    const bob = Math.sin(
+                        elapsedTime * orbit.bobSpeed + orbit.phase
+                    ) * orbit.bobAmplitude;
+                    const pulse = 0.88 + (
+                        Math.sin(elapsedTime * 1.4 + orbit.phase) + 1
+                    ) * 0.08;
+
+                    heart.position.set(
+                        Math.cos(angle) * orbit.radius,
+                        orbit.height + bob,
+                        Math.sin(angle) * orbit.radius
+                    );
+                    heart.scale.setScalar(orbit.size * pulse);
+                    heart.material.opacity =
+                        0.24 + (Math.sin(elapsedTime * 1.4 + orbit.phase) + 1) * 0.05;
+                });
+            }
+        }
 
         const moonSlot = slotIds.find(
             (slotId) => selectedFile(slotId) === 'moon.html'

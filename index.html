@@ -149,8 +149,9 @@
     <button type="button" data-image-action="rotate-left" data-image-edit-control aria-label="이미지 왼쪽 회전" title="왼쪽 회전">↶</button>
     <button type="button" data-image-action="rotate-right" data-image-edit-control aria-label="이미지 오른쪽 회전" title="오른쪽 회전">↷</button>
     <button type="button" id="screenImageLayerToggle" data-image-action="toggle-layer" data-image-edit-control>뒤로 보내기</button>
-    <button type="button" data-image-action="remove" data-image-edit-control aria-label="이미지 삭제" title="삭제">삭제</button>
-    <button type="button" id="screenImageLockToggle" data-image-action="toggle-lock" aria-label="이미지 잠금">잠금</button>
+    <button type="button" id="screenImageShadowToggle" data-image-action="toggle-shadow" data-image-edit-control aria-pressed="true">그림자 끄기</button>
+    <button type="button" data-image-action="remove" data-image-edit-control aria-label="이미지 삭제" title="삭제">×</button>
+    <button type="button" id="screenImageLockToggle" data-image-action="toggle-lock" aria-label="이미지 잠금" title="잠금">잠금</button>
   </div>
   <div class="part-panel" id="partPanel">
     <div class="part-panel-header">
@@ -165,6 +166,14 @@
         <label class="spindle-control"><input id="spindleToggle" type="checkbox" checked /> 중앙 축 표시</label>
         <label class="event-control" id="combinationTransformationControl" hidden>
           <input id="combinationTransformationToggle" type="checkbox" checked />
+          <span>이벤트 ON</span>
+        </label>
+        <label class="event-control" id="moonBeaHeartEventControl" hidden>
+          <input id="moonBeaHeartEventToggle" type="checkbox" checked />
+          <span>이벤트 ON</span>
+        </label>
+        <label class="event-control" id="moonBeaBlushEventControl" hidden>
+          <input id="moonBeaBlushEventToggle" type="checkbox" checked />
           <span>이벤트 ON</span>
         </label>
       </div>

@@ -44,9 +44,16 @@ body.back-screen-image-selected #app {
     user-select: none;
     filter: drop-shadow(0 8px 18px rgba(18, 26, 40, .2));
 }
+.screen-image[data-shadow="false"] {
+    filter: none;
+}
 .screen-image.selected {
     outline: 2px solid #4b8cff;
     outline-offset: 2px;
+    cursor: grab;
+}
+.screen-image.dragging {
+    cursor: grabbing;
 }
 #cameraFeed {
     position: fixed;
@@ -179,7 +186,7 @@ body.capture-mode .capture-frame .desktop-frame {
 body.capture-mode .capture-frame .desktop-overlay {
     position: absolute;
     display: block;
-    width: min(38vw, 50vh);
+    width: min(32vw, 42vh);
     height: auto;
     pointer-events: auto;
     cursor: pointer;
@@ -197,7 +204,7 @@ body.capture-mode .capture-frame .desktop-left-bottom {
 body.capture-mode .capture-frame .desktop-middle-bottom {
     bottom: 0;
     left: 50%;
-    width: min(19vw, 25vh);
+    width: min(16vw, 21vh);
     transform: translateX(-50%);
 }
 body.capture-mode .capture-frame .desktop-right-top {
@@ -592,9 +599,11 @@ body.capture-mode #phoneInvertButton:focus-visible {
     position: fixed;
     z-index: 15;
     display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    width: min(300px, calc(100vw - 16px));
+    flex-wrap: nowrap;
+    gap: 3px;
+    width: max-content;
+    max-width: calc(100vw - 16px);
+    box-sizing: border-box;
     padding: 7px;
     border: 1px solid rgba(45, 55, 72, .18);
     border-radius: 8px;
@@ -615,31 +624,44 @@ body.capture-mode #phoneInvertButton:focus-visible {
     backdrop-filter: none;
 }
 .screen-image-controls button {
-    min-width: 32px;
+    min-width: 26px;
     height: 32px;
+    box-sizing: border-box;
     margin: 0;
-    padding: 0 8px;
+    padding: 0 4px;
     border: 0;
     border-radius: 6px;
     background: #222836;
     color: white;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 12px;
 }
 .screen-image-controls #screenImageLayerToggle {
-    flex: 1;
+    flex: 0 1 auto;
+    min-width: 0;
+    padding: 0 4px;
     white-space: nowrap;
+    font-size: 10px;
+}
+.screen-image-controls #screenImageShadowToggle {
+    flex: 0 1 auto;
+    min-width: 0;
+    padding: 0 4px;
+    white-space: nowrap;
+    font-size: 10px;
 }
 .screen-image-controls.locked #screenImageLockToggle {
-    width: 132px;
-    height: 38px;
-    padding: 0 12px;
+    width: auto;
+    min-width: 54px;
+    height: 32px;
+    padding: 0 8px;
     border: 1px solid rgba(45, 55, 72, .18);
     border-radius: 8px;
     background: #fff;
     box-shadow: 0 6px 18px rgba(30, 45, 70, .2);
     color: #222836;
-    font-weight: 700;
+    font-weight: 400;
+    font-size: 10px;
 }
 body.dark-mode .screen-image-controls {
     border-color: rgba(220, 230, 250, .18);
@@ -1145,6 +1167,9 @@ body.dark-mode .camera-height-controls button { border-color:var(--glass-border)
 .camera-height-controls button:hover { background:var(--glass-bg-strong); }
 #captureControls button { background:var(--glass-bg); color:var(--ui-text); backdrop-filter:blur(20px); }
 body.capture-mode .menu-toggle { display:none; }
+@media (min-width:601px) {
+  .part-panel-content { width:calc(100% - 8px); margin-right:auto; margin-left:auto; box-sizing:border-box; }
+}
 @media (max-width:600px) {
   .view-hint { display:none; }
   .menu-toggle { top:12px; left:12px; width:44px; height:44px; border-radius:14px; }
