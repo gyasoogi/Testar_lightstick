@@ -181,7 +181,9 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
     const isChaKimPairCombination = (files) =>
         files.filter((file) => file === 'cha.html').length === 1 &&
         files.filter((file) => file === 'kim.html').length === 1 &&
-        files.filter(Boolean).length === 2;
+        files.filter(Boolean).every((file) =>
+            ['cha.html', 'kim.html', 'heart.html'].includes(file)
+        );
 
     let chaTransformationEnabled = true;
     let ribbonTransformationEnabled = true;
