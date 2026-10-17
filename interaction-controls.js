@@ -49,6 +49,7 @@ export function setupInteractionControls(context) {
     const captureControls = document.getElementById('captureControls');
     const exitCaptureMode = document.getElementById('exitCaptureMode');
     const takeCapture = document.getElementById('takeCapture');
+    const frameToggle = document.getElementById('frameToggle');
     const phoneCaptureButton = document.getElementById('phoneCaptureButton');
     const cameraHeightControls = document.getElementById('cameraHeightControls');
     const cameraFeed = document.getElementById('cameraFeed');
@@ -61,6 +62,10 @@ export function setupInteractionControls(context) {
     const screenImageLockToggle = document.getElementById('screenImageLockToggle');
     const addScreenImageButton = document.getElementById('addScreenImage');
     const screenImageInput = document.getElementById('screenImageInput');
+    const backgroundImageLayer = document.getElementById('backgroundImageLayer');
+    const backgroundImageToggle = document.getElementById('backgroundImageToggle');
+    const backgroundImageInput = document.getElementById('backgroundImageInput');
+    let backgroundImageUrl = null;
     let selectedScreenImage = null;
     let activeScreenImageDrag = null;
     const screenImageAlphaMasks = new WeakMap();
@@ -68,22 +73,41 @@ export function setupInteractionControls(context) {
     const viewHint = document.getElementById('viewHint');
     const lightstickBaseY = lightstick.position.y;
     let frontMode = false;
-    let activeFrontPointerId = null;
-    let lastPointerX = 0;
     let captureMode = false;
+    let frameEnabled = true;
+    let captureModeOrientationAlertShown = false;
     let specialCaptureAlertShown = false;
     let moonCaptureAlertShown = false;
     let beaPairCaptureAlertShown = false;
     let chaKimPairCaptureAlertShown = false;
+
+    document.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+    });
     
     function setCaptureMode(enabled) {
+        if (
+            enabled &&
+            !captureModeOrientationAlertShown
+        ) {
+            alert('가로 화면에서는 디지털 카메라 프레임, 세로 화면에서는 폰 카메라 프레임이 적용됩니다.');
+            captureModeOrientationAlertShown = true;
+        }
         captureMode = enabled;
         document.body.classList.toggle('capture-mode', enabled);
         captureControls.hidden = !enabled;
     }
+
+    function setFrameEnabled(enabled) {
+        frameEnabled = enabled;
+        document.body.classList.toggle('frame-off', !enabled);
+        frameToggle.textContent = `프레임 ${enabled ? 'ON' : 'OFF'}`;
+        frameToggle.setAttribute('aria-pressed', String(enabled));
+    }
     
     captureModeToggle.addEventListener('click', () => setCaptureMode(true));
     exitCaptureMode.addEventListener('click', () => setCaptureMode(false));
+    frameToggle.addEventListener('click', () => setFrameEnabled(!frameEnabled));
     
     function screenImageContainsPoint(image, clientX, clientY) {
         const alphaMask = screenImageAlphaMasks.get(image);
@@ -401,6 +425,45 @@ export function setupInteractionControls(context) {
         Array.from(screenImageInput.files || []).forEach(addScreenImage);
         screenImageInput.value = '';
     });
+
+    function removeBackgroundImage() {
+        backgroundImageLayer.replaceChildren();
+        if (backgroundImageUrl) URL.revokeObjectURL(backgroundImageUrl);
+        backgroundImageUrl = null;
+        backgroundImageToggle.textContent = '백그라운드 이미지 추가';
+        backgroundImageInput.value = '';
+    }
+
+    backgroundImageToggle.addEventListener('click', () => {
+        if (backgroundImageUrl) {
+            removeBackgroundImage();
+            return;
+        }
+        backgroundImageInput.click();
+    });
+    backgroundImageInput.addEventListener('change', () => {
+        const [file] = backgroundImageInput.files || [];
+        backgroundImageInput.value = '';
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            alert('이미지 파일을 선택해 주세요.');
+            return;
+        }
+        const objectUrl = URL.createObjectURL(file);
+        const image = new Image();
+        image.alt = '';
+        image.addEventListener('load', () => {
+            if (backgroundImageUrl) URL.revokeObjectURL(backgroundImageUrl);
+            backgroundImageUrl = objectUrl;
+            backgroundImageLayer.replaceChildren(image);
+            backgroundImageToggle.textContent = '백그라운드 이미지 삭제';
+        }, { once: true });
+        image.addEventListener('error', () => {
+            URL.revokeObjectURL(objectUrl);
+            alert('백그라운드 이미지를 불러오지 못했습니다.');
+        }, { once: true });
+        image.src = objectUrl;
+    });
     
     screenImageControls.addEventListener('click', (event) => {
         const button = event.target.closest('button[data-image-action]');
@@ -479,18 +542,22 @@ export function setupInteractionControls(context) {
         context.drawImage(cameraFeed, 0, 0, width, height);
         if (cameraFacingMode === 'user') context.restore();
         } else {
-        const background = context.createRadialGradient(width * 0.5, height * 0.3, 0, width * 0.5, height * 0.3, Math.max(width, height) * 0.75);
-        if (darkModeOn) {
-            background.addColorStop(0, '#242a37');
-            background.addColorStop(0.48, '#11151e');
-            background.addColorStop(1, '#080a10');
-        } else {
-            background.addColorStop(0, '#f8fbff');
-            background.addColorStop(0.38, '#e8edf5');
-            background.addColorStop(1, '#cfd6e2');
+            const background = context.createRadialGradient(width * 0.5, height * 0.3, 0, width * 0.5, height * 0.3, Math.max(width, height) * 0.75);
+            if (darkModeOn) {
+                background.addColorStop(0, '#242a37');
+                background.addColorStop(0.48, '#11151e');
+                background.addColorStop(1, '#080a10');
+            } else {
+                background.addColorStop(0, '#f8fbff');
+                background.addColorStop(0.38, '#e8edf5');
+                background.addColorStop(1, '#cfd6e2');
+            }
+            context.fillStyle = background;
+            context.fillRect(0, 0, width, height);
         }
-        context.fillStyle = background;
-        context.fillRect(0, 0, width, height);
+        const backgroundImage = backgroundImageLayer.querySelector('img');
+        if (backgroundImage?.complete && backgroundImage.naturalWidth) {
+            context.drawImage(backgroundImage, 0, 0, width, height);
         }
         drawScreenImages(screenImageBackLayer, context);
         const previousPixelRatio = renderer.getPixelRatio();
@@ -506,17 +573,19 @@ export function setupInteractionControls(context) {
         }
         drawScreenImages(screenImageFrontLayer, context);
     
-        if (matchMedia('(max-width: 600px)').matches) {
+        if (matchMedia('(orientation: portrait)').matches) {
         const phoneTop = document.querySelector('.phone-top');
         const phoneBottom = document.querySelector('.phone-bottom');
-        if (!phoneTop.complete || !phoneTop.naturalWidth || !phoneBottom.complete || !phoneBottom.naturalWidth) {
+        if (frameEnabled && (!phoneTop.complete || !phoneTop.naturalWidth || !phoneBottom.complete || !phoneBottom.naturalWidth)) {
             throw new Error('캡쳐 프레임 이미지를 불러오지 못했습니다.');
         }
-        const topHeight = width * phoneTop.naturalHeight / phoneTop.naturalWidth;
-        const bottomHeight = width * phoneBottom.naturalHeight / phoneBottom.naturalWidth;
-        context.drawImage(phoneTop, 0, 0, width, topHeight);
-        context.drawImage(phoneBottom, 0, height - bottomHeight, width, bottomHeight);
-        } else {
+        if (frameEnabled) {
+            const topHeight = width * phoneTop.naturalHeight / phoneTop.naturalWidth;
+            const bottomHeight = width * phoneBottom.naturalHeight / phoneBottom.naturalWidth;
+            context.drawImage(phoneTop, 0, 0, width, topHeight);
+            context.drawImage(phoneBottom, 0, height - bottomHeight, width, bottomHeight);
+        }
+        } else if (frameEnabled) {
         const cornerWidth = Math.min(width * 0.38, height * 0.5);
         const centerWidth = cornerWidth / 2;
         const desktopFrames = [
@@ -655,7 +724,6 @@ export function setupInteractionControls(context) {
     frontModeToggle.addEventListener('click', () => {
         frontMode = !frontMode;
         controls.enabled = !frontMode;
-        activeFrontPointerId = null;
         if (frontMode) {
         lightstick.position.y = lightstickBaseY;
         lightstick.rotation.set(0, 0, 0);
@@ -694,11 +762,6 @@ export function setupInteractionControls(context) {
     renderer.domElement.addEventListener('pointerdown', (event) => {
         if (selectedScreenImage?.dataset.layer === 'back') selectScreenImage(null);
         if (frontMode) {
-        if (event.button !== 0) return;
-        event.preventDefault();
-        activeFrontPointerId = event.pointerId;
-        lastPointerX = event.clientX;
-        renderer.domElement.setPointerCapture(event.pointerId);
         return;
         }
         const rect = renderer.domElement.getBoundingClientRect();
@@ -708,24 +771,6 @@ export function setupInteractionControls(context) {
         const hits = raycaster.intersectObject(button, true);
         if (hits.length) setLightState(!lightOn);
     });
-    
-    renderer.domElement.addEventListener('pointermove', (event) => {
-        if (!frontMode || event.pointerId !== activeFrontPointerId) return;
-        event.preventDefault();
-        const deltaX = event.clientX - lastPointerX;
-        lastPointerX = event.clientX;
-        lightstick.rotation.y += deltaX * 0.004;
-    });
-    
-    const finishFrontDrag = (event) => {
-        if (event.pointerId !== activeFrontPointerId) return;
-        activeFrontPointerId = null;
-        if (renderer.domElement.hasPointerCapture(event.pointerId)) {
-        renderer.domElement.releasePointerCapture(event.pointerId);
-        }
-    };
-    renderer.domElement.addEventListener('pointerup', finishFrontDrag);
-    renderer.domElement.addEventListener('pointercancel', finishFrontDrag);
     
     // ---------- Animation ----------
     const clock = new THREE.Clock();

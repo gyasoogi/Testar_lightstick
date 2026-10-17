@@ -39,6 +39,8 @@ environmentGenerator.dispose();
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
+controls.enableRotate = false;
+controls.enablePan = false;
 controls.target.copy(defaultCameraTarget);
 controls.minDistance = 5.2;
 controls.maxDistance = 15;

@@ -16,6 +16,7 @@
 </head>
 <body>
   <video id="cameraFeed" autoplay playsinline muted></video>
+  <div class="background-image-layer" id="backgroundImageLayer" aria-hidden="true"></div>
   <div id="app"></div>
   <div id="screenImageBackLayer" aria-label="응원봉 뒤 이미지"></div>
   <div id="screenImageFrontLayer" aria-label="응원봉 앞 이미지"></div>
@@ -45,13 +46,16 @@
     <div class="menu-heading">
       <div><span class="eyebrow">CONTROL PANEL</span><strong>조작 메뉴</strong></div>
     </div>
+    <button id="openCustomizer" type="button" hidden>커스터마이저 열기</button>
     <p class="view-hint" id="viewHint">드래그: 회전 · 휠: 확대/축소</p>
     <section class="control-section">
       <span class="section-label">LIGHTING</span>
-      <button id="toggle" type="button">LIGHT ON</button>
-      <label class="light-color-control" for="lightColorInput">라이트 색상
-        <input id="lightColorInput" type="color" value="#ffffff" aria-label="라이트 색상 선택" />
-      </label>
+      <div class="lighting-controls">
+        <button id="toggle" type="button">LIGHT ON</button>
+        <label class="light-color-control" for="lightColorInput">라이트 색상
+          <input id="lightColorInput" type="color" value="#ffffff" aria-label="라이트 색상 선택" />
+        </label>
+      </div>
     </section>
     <section class="control-section">
       <span class="section-label">DISPLAY</span>
@@ -61,13 +65,21 @@
         <button id="frontModeToggle" type="button" aria-pressed="false">정면 조작 OFF</button>
         <button id="cameraToggle" type="button" aria-pressed="false">카메라 켜기</button>
         <button id="cameraFacingToggle" type="button" hidden>전면으로 전환</button>
-        <button id="addScreenImage" type="button">이미지 추가</button>
         <button id="captureModeToggle" type="button">캡처 모드</button>
       </div>
     </section>
+    <section class="control-section">
+      <span class="section-label">DECO</span>
+      <div class="view-controls">
+        <button id="addScreenImage" type="button">이미지 추가</button>
+        <button id="backgroundImageToggle" type="button">백그라운드 이미지 추가</button>
+      </div>
+    </section>
     <input id="screenImageInput" type="file" accept="image/*" multiple hidden />
+    <input id="backgroundImageInput" type="file" accept="image/*" hidden />
   </div>
   <div id="captureControls" hidden>
+    <button id="frameToggle" type="button" aria-pressed="true">프레임 ON</button>
     <button id="exitCaptureMode" type="button">모드 OFF</button>
     <button id="takeCapture" type="button">화면 캡쳐</button>
   </div>
@@ -83,11 +95,19 @@
   <div class="part-panel" id="partPanel">
     <div class="part-panel-header">
       <h3 id="partPanelTitle">커스터마이저</h3>
-      <button class="part-panel-toggle" id="partPanelToggle" type="button" aria-label="커스터마이저 접기" title="접기" aria-expanded="true" aria-controls="partPanelContent">-</button>
+      <div class="part-panel-actions">
+        <button class="part-panel-toggle" id="partPanelToggle" type="button" aria-label="커스터마이저 접기" title="접기" aria-expanded="true" aria-controls="partPanelContent">-</button>
+        <button class="part-panel-close" id="partPanelClose" type="button" aria-label="커스터마이저 닫기" title="닫기">×</button>
+      </div>
     </div>
-    <button id="combinationTransformationToggle" type="button" aria-pressed="true" hidden>변신 ON</button>
     <div class="part-panel-content" id="partPanelContent">
-      <label class="spindle-control"><input id="spindleToggle" type="checkbox" checked /> 중앙 축 표시</label>
+      <div class="part-options-row">
+        <label class="spindle-control"><input id="spindleToggle" type="checkbox" checked /> 중앙 축 표시</label>
+        <label class="event-control" id="combinationTransformationControl" hidden>
+          <input id="combinationTransformationToggle" type="checkbox" checked />
+          <span>이벤트 ON</span>
+        </label>
+      </div>
     </div>
   </div>
   <script>
@@ -117,6 +137,51 @@
       const partPanel = document.getElementById('partPanel');
       const partToggle = document.getElementById('partPanelToggle');
       const partContent = document.getElementById('partPanelContent');
+      const partClose = document.getElementById('partPanelClose');
+      const partHeader = partPanel.querySelector('.part-panel-header');
+      const openCustomizer = document.getElementById('openCustomizer');
+      let hasShownCustomizerAlert = false;
+      const closeCustomizer = () => {
+        partPanel.hidden = true;
+        openCustomizer.hidden = false;
+        if (!hasShownCustomizerAlert) {
+          alert('커스터마이저를 닫았습니다. 좌측 상단 메뉴에서 다시 열 수 있어요.');
+          hasShownCustomizerAlert = true;
+        }
+      };
+      partClose.addEventListener('click', closeCustomizer);
+      openCustomizer.addEventListener('click', () => {
+        partPanel.hidden = false;
+        openCustomizer.hidden = true;
+        setMenu(false);
+      });
+      let panelDrag = null;
+      partHeader.addEventListener('pointerdown', (event) => {
+        if (event.target.closest('button') || event.button !== 0) return;
+        const bounds = partPanel.getBoundingClientRect();
+        partPanel.style.left = `${bounds.left}px`;
+        partPanel.style.top = `${bounds.top}px`;
+        partPanel.style.right = 'auto';
+        panelDrag = {
+          pointerId: event.pointerId,
+          offsetX: event.clientX - bounds.left,
+          offsetY: event.clientY - bounds.top
+        };
+        partHeader.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      });
+      partHeader.addEventListener('pointermove', (event) => {
+        if (!panelDrag || event.pointerId !== panelDrag.pointerId) return;
+        const maxLeft = Math.max(0, window.innerWidth - partPanel.offsetWidth);
+        const maxTop = Math.max(0, window.innerHeight - partPanel.offsetHeight);
+        partPanel.style.left = `${Math.min(maxLeft, Math.max(0, event.clientX - panelDrag.offsetX))}px`;
+        partPanel.style.top = `${Math.min(maxTop, Math.max(0, event.clientY - panelDrag.offsetY))}px`;
+      });
+      const finishPanelDrag = (event) => {
+        if (panelDrag?.pointerId === event.pointerId) panelDrag = null;
+      };
+      partHeader.addEventListener('pointerup', finishPanelDrag);
+      partHeader.addEventListener('pointercancel', finishPanelDrag);
       if (partToggle && partPanel && partContent) {
         const syncPartToggle = () => {
           const collapsed = partPanel.classList.contains('collapsed');

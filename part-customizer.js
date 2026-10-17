@@ -152,6 +152,8 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
             scale: 0.7
         }
     ];
+    const cylinderPositionMin = -0.45;
+    const cylinderPositionMax = 1.0;
 
     const ribbonColors = new Map([
         ['ahyeon.html', 0xa777e8],
@@ -474,9 +476,79 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
         return tie;
     }
 
+    function removeMoonBeaBlushes(moonModel) {
+        const blushes = moonModel.userData.beaCombinationBlushes;
+        if (!blushes) return;
+
+        blushes.forEach((blush) => {
+            blush.removeFromParent();
+            blush.traverse((object) => {
+                object.geometry?.dispose();
+                const materials = Array.isArray(object.material)
+                    ? object.material
+                    : [object.material];
+                materials.forEach((material) => material?.dispose());
+            });
+        });
+        delete moonModel.userData.beaCombinationBlushes;
+        delete moonModel.userData.beaCombinationBlushSource;
+    }
+
+    function addMoonBeaBlushes(moonModel, beaModel) {
+        if (
+            moonModel.userData.beaCombinationBlushSource === beaModel &&
+            moonModel.userData.beaCombinationBlushes
+        ) {
+            return;
+        }
+
+        removeMoonBeaBlushes(moonModel);
+        const blushes = ['왼쪽 볼', '오른쪽 볼']
+            .map((name) => beaModel.getObjectByName(name))
+            .filter(Boolean)
+            .map((sourceBlush) => {
+                const blush = sourceBlush.clone(true);
+                blush.name = `배세진 조합 ${sourceBlush.name}`;
+                const side = sourceBlush.name === '왼쪽 볼' ? 1 : -1;
+                const x = side * 0.52;
+                const y = -0.28;
+                const headSurfaceZ = 0.9 * Math.sqrt(Math.max(
+                    0,
+                    1 - (x / (1.05 * 0.83)) ** 2 - (y / 0.95) ** 2
+                ));
+                blush.position.set(x, y, headSurfaceZ - 0.015);
+                blush.scale.y *= 0.8;
+                blush.traverse((object) => {
+                    if (!object.isMesh) return;
+                    object.geometry = object.geometry.clone();
+                    const materials = Array.isArray(object.material)
+                        ? object.material
+                        : [object.material];
+                    const clonedMaterials = materials.map((material) =>
+                        material.clone()
+                    );
+                    object.material = Array.isArray(object.material)
+                        ? clonedMaterials
+                        : clonedMaterials[0];
+                });
+                moonModel.add(blush);
+                return blush;
+            });
+
+        moonModel.userData.beaCombinationBlushSource = beaModel;
+        moonModel.userData.beaCombinationBlushes = blushes;
+    }
+
     function updateCombinationRibbons() {
         const selectedFiles = [...selectedPartFiles.values()]
             .map((file) => file.split('/').pop());
+        const selectedCharacters = selectedFiles.filter(Boolean);
+        const hasMoonBeaBlushCombination =
+            selectedCharacters.includes('moon.html') &&
+            selectedCharacters.includes('bea.html') &&
+            selectedCharacters.every((file) =>
+                ['moon.html', 'bea.html', 'heart.html', 'apple.html'].includes(file)
+            );
 
         const hasRibbonCombination =
             selectedFiles.length === ribbonCombination.length &&
@@ -549,16 +621,12 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
             ? ribbonTransformationEnabled
             : hasChaEventCombination && chaTransformationEnabled;
 
-        combinationTransformationToggle.hidden =
+        combinationTransformationControl.hidden =
             !isTransformationAvailable;
 
-        combinationTransformationToggle.setAttribute(
-            'aria-pressed',
-            String(isTransformationEnabled)
-        );
-
-        combinationTransformationToggle.textContent =
-            `변신 ${isTransformationEnabled ? 'ON' : 'OFF'}`;
+        combinationTransformationToggle.checked = isTransformationEnabled;
+        combinationTransformationToggle.nextElementSibling.textContent =
+            `이벤트 ${isTransformationEnabled ? 'ON' : 'OFF'}`;
 
         loadedPartModels.forEach(
             ({ file, ribbon, model, foreheadMark }, slotId) => {
@@ -601,6 +669,17 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
                 }
             }
         );
+
+        const beaModel = [...loadedPartModels.values()]
+            .find(({ file }) => file === 'bea.html')?.model;
+        loadedPartModels.forEach(({ file, model }) => {
+            if (file !== 'moon.html') return;
+            if (hasMoonBeaBlushCombination && beaModel) {
+                addMoonBeaBlushes(model, beaModel);
+            } else {
+                removeMoonBeaBlushes(model);
+            }
+        });
     }
 
     const partPanel = document.getElementById('partPanel');
@@ -610,20 +689,23 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
 
     const combinationTransformationToggle =
         document.getElementById('combinationTransformationToggle');
+    const combinationTransformationControl =
+        document.getElementById('combinationTransformationControl');
 
-    combinationTransformationToggle.addEventListener('click', () => {
+    combinationTransformationToggle.addEventListener('change', () => {
         const selectedFiles = [...selectedPartFiles.values()]
             .map((file) => file.split('/').pop());
+        const isEnabled = combinationTransformationToggle.checked;
 
         if (ribbonCombination.every((file) => selectedFiles.includes(file))) {
-            ribbonTransformationEnabled = !ribbonTransformationEnabled;
+            ribbonTransformationEnabled = isEnabled;
         }
 
         const hasChaColorCombination =
             selectedFiles.length === chaColorCombination.length &&
             chaColorCombination.every((file) => selectedFiles.includes(file));
         if (hasChaColorCombination || isChaKimPairCombination(selectedFiles)) {
-            chaTransformationEnabled = !chaTransformationEnabled;
+            chaTransformationEnabled = isEnabled;
         }
 
         updateCombinationRibbons();
@@ -695,10 +777,21 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
 
         const positionRange = document.createElement('input');
         positionRange.type = 'range';
-        positionRange.min = '-1.5';
-        positionRange.max = '1.5';
+        positionRange.min = String(cylinderPositionMin);
+        positionRange.max = String(cylinderPositionMax);
         positionRange.step = '0.01';
-        positionRange.value = '0';
+        positionRange.value = String(config.y);
+
+        const updatePositionRangeFill = () => {
+            const progress =
+                ((Number(positionRange.value) - cylinderPositionMin) /
+                    (cylinderPositionMax - cylinderPositionMin)) * 100;
+            positionRange.style.setProperty(
+                '--position-progress',
+                `${progress}%`
+            );
+        };
+        updatePositionRangeFill();
 
         positionRange.setAttribute(
             'aria-label',
@@ -707,7 +800,6 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
 
         const positionLabel = document.createElement('label');
         positionLabel.className = 'part-control-label';
-        positionLabel.textContent = '위치';
         positionLabel.appendChild(positionRange);
 
         const iframe = document.createElement('iframe');
@@ -887,7 +979,8 @@ export function setupPartCustomizer({ chamber, partSpindle, mesh }) {
         });
 
         positionRange.addEventListener('input', () => {
-            group.position.y = config.y + Number(positionRange.value);
+            group.position.y = Number(positionRange.value);
+            updatePositionRangeFill();
         });
 
         iframe.src = config.defaultFile;
