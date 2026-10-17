@@ -223,6 +223,17 @@ export function setupInteractionControls(context) {
         phoneFlashTrigger.setAttribute('aria-expanded', String(open));
     }
 
+    function showPhoneCaptureIntroForFirstPortraitEntry() {
+        if (
+            captureMode &&
+            matchMedia('(orientation: portrait)').matches &&
+            !phoneCaptureIntroDismissed
+        ) {
+            phoneCaptureIntro.hidden = false;
+            phoneCaptureIntro.focus();
+        }
+    }
+
     phoneFlashTrigger.addEventListener('click', () => {
         setPhoneFlashControlsOpen(phoneFlashControls.hidden);
     });
@@ -249,14 +260,7 @@ export function setupInteractionControls(context) {
         document.body.classList.toggle('capture-mode', enabled);
         captureControls.hidden = !enabled;
         if (!enabled) setPhoneFlashControlsOpen(false);
-        if (
-            enabled &&
-            matchMedia('(orientation: portrait)').matches &&
-            !phoneCaptureIntroDismissed
-        ) {
-            phoneCaptureIntro.hidden = false;
-            phoneCaptureIntro.focus();
-        }
+        showPhoneCaptureIntroForFirstPortraitEntry();
         if (!enabled) resetCameraDecorations();
     }
 
@@ -841,7 +845,18 @@ export function setupInteractionControls(context) {
             const bottomHeight = width * phoneBottom.naturalHeight / phoneBottom.naturalWidth;
             context.save();
             if (frameColorInverted) context.filter = 'invert(1)';
-            context.drawImage(phoneTop, 0, 0, width, topHeight);
+            const transparentTopRows = 2;
+            context.drawImage(
+                phoneTop,
+                0,
+                transparentTopRows,
+                phoneTop.naturalWidth,
+                phoneTop.naturalHeight - transparentTopRows,
+                0,
+                0,
+                width,
+                topHeight
+            );
             context.drawImage(phoneBottom, 0, height - bottomHeight, width, bottomHeight);
             context.restore();
         }
@@ -1219,7 +1234,7 @@ export function setupInteractionControls(context) {
             : 0;
         const activeColor = lightColorInputs[colorIndex]?.value || phoneLightColorInput.value;
         if (activeColor !== `#${lightColor.getHexString()}`) applyLightColor(activeColor);
-        const blinkIntensity = blinkEnabled
+        const blinkIntensity = blinkEnabled && lightColorInputs.length === 1
             ? (softBlink ? softBlinkIntensity : (isHardBlinkOn ? 1 : 0))
             : 1;
         const isLightVisible = lightOn && blinkIntensity > 0;
@@ -1261,5 +1276,6 @@ export function setupInteractionControls(context) {
         camera.aspect = innerWidth / innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(innerWidth, innerHeight);
+        showPhoneCaptureIntroForFirstPortraitEntry();
     });
 }
