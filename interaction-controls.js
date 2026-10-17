@@ -50,6 +50,7 @@ export function setupInteractionControls(context) {
     const exitCaptureMode = document.getElementById('exitCaptureMode');
     const takeCapture = document.getElementById('takeCapture');
     const frameToggle = document.getElementById('frameToggle');
+    const captureFrame = document.querySelector('.capture-frame');
     const phoneCaptureButton = document.getElementById('phoneCaptureButton');
     const cameraHeightControls = document.getElementById('cameraHeightControls');
     const cameraFeed = document.getElementById('cameraFeed');
@@ -77,6 +78,7 @@ export function setupInteractionControls(context) {
     let lastPointerX = 0;
     let captureMode = false;
     let frameEnabled = true;
+    let frameColorInverted = false;
     let captureModeOrientationAlertShown = false;
     let specialCaptureAlertShown = false;
     let moonCaptureAlertShown = false;
@@ -106,6 +108,18 @@ export function setupInteractionControls(context) {
         frameToggle.textContent = `프레임 ${enabled ? 'ON' : 'OFF'}`;
         frameToggle.setAttribute('aria-pressed', String(enabled));
     }
+
+    function toggleFrameColorInversion() {
+        frameColorInverted = !frameColorInverted;
+        document.body.classList.toggle('frame-color-inverted', frameColorInverted);
+    }
+
+    captureFrame.addEventListener('click', (event) => {
+        if (!(event.target instanceof Element)) return;
+        if (event.target.closest('#phoneCaptureButton')) return;
+        if (!event.target.closest('.desktop-overlay, .phone-frame')) return;
+        toggleFrameColorInversion();
+    });
     
     captureModeToggle.addEventListener('click', () => setCaptureMode(true));
     exitCaptureMode.addEventListener('click', () => setCaptureMode(false));
@@ -584,8 +598,11 @@ export function setupInteractionControls(context) {
         if (frameEnabled) {
             const topHeight = width * phoneTop.naturalHeight / phoneTop.naturalWidth;
             const bottomHeight = width * phoneBottom.naturalHeight / phoneBottom.naturalWidth;
+            context.save();
+            if (frameColorInverted) context.filter = 'invert(1)';
             context.drawImage(phoneTop, 0, 0, width, topHeight);
             context.drawImage(phoneBottom, 0, height - bottomHeight, width, bottomHeight);
+            context.restore();
         }
         } else if (frameEnabled) {
         const cornerWidth = Math.min(width * 0.38, height * 0.5);
@@ -603,7 +620,10 @@ export function setupInteractionControls(context) {
             throw new Error(`캡쳐 프레임 이미지를 불러오지 못했습니다: ${selector}`);
             }
             const frameHeight = frameWidth * frame.naturalHeight / frame.naturalWidth;
+            context.save();
+            if (frameColorInverted) context.filter = 'invert(1)';
             context.drawImage(frame, x, y, frameWidth, frameHeight);
+            context.restore();
         });
         }
     

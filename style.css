@@ -110,6 +110,8 @@ body.capture-mode .capture-frame .desktop-overlay {
     display: block;
     width: min(38vw, 50vh);
     height: auto;
+    pointer-events: auto;
+    cursor: pointer;
 }
 body.capture-mode .capture-frame .desktop-left-top {
     top: 0;
@@ -139,11 +141,17 @@ body.capture-mode.frame-off .capture-frame .phone-bottom-frame,
 body.capture-mode.frame-off #phoneCaptureButton {
     display: none;
 }
+body.capture-mode.frame-color-inverted .capture-frame .desktop-overlay,
+body.capture-mode.frame-color-inverted .capture-frame .phone-frame {
+    filter: invert(1);
+}
 body.capture-mode .capture-frame .phone-frame {
     position: absolute;
     display: block;
     width: 100%;
     height: auto;
+    pointer-events: auto;
+    cursor: pointer;
 }
 body.capture-mode .capture-frame .phone-top {
     top: 0;
@@ -650,6 +658,9 @@ body.dark-mode .part-slot select {
     }
     #takeCapture {
     display: none;
+    }
+    body.capture-mode.frame-off #takeCapture {
+    display: inline-flex;
     }
     #captureControls button {
     padding: 7px 10px;
