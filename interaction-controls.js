@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createGifPalette, encodeGif, quantizeGifFrame } from './gif-encoder.js';
 
 export function setupInteractionControls(context) {
     const {
@@ -12,8 +13,24 @@ export function setupInteractionControls(context) {
 
     // ---------- Interaction ----------
     let lightOn = false;
+    let blinkEnabled = false;
+    let blinkSpeed = 2;
+    let softBlink = false;
     let darkModeOn = false;
     const lightColorInput = document.getElementById('lightColorInput');
+    const phoneLightColorInput = document.getElementById('phoneLightColorInput');
+    const phoneLightColors = document.getElementById('phoneLightColors');
+    const phoneLightColorHint = document.getElementById('phoneLightColorHint');
+    const phoneAddLightColor = document.getElementById('phoneAddLightColor');
+    const phoneLightToggle = document.getElementById('phoneLightToggle');
+    const phoneBlinkToggle = document.getElementById('phoneBlinkToggle');
+    const phoneBlinkStyleToggle = document.getElementById('phoneBlinkStyleToggle');
+    const phoneBlinkSpeedInput = document.getElementById('phoneBlinkSpeed');
+    const phoneBlinkSpeedValue = document.getElementById('phoneBlinkSpeedValue');
+    const phoneFlashLightOptions = document.getElementById('phoneFlashLightOptions');
+    const phoneFlashTrigger = document.getElementById('phoneFlashTrigger');
+    const phoneFlashControls = document.getElementById('phoneFlashControls');
+    const phoneFlashClose = document.getElementById('phoneFlashClose');
     const lightColor = new THREE.Color(lightColorInput.value);
     let cameraStream = null;
     let cameraFacingMode = 'environment';
@@ -24,6 +41,9 @@ export function setupInteractionControls(context) {
     function setLightState(on) {
         lightOn = on;
         document.getElementById('toggle').textContent = on ? 'LIGHT OFF' : 'LIGHT ON';
+        phoneLightToggle.textContent = on ? '라이트 끄기' : '라이트 켜기';
+        phoneLightToggle.setAttribute('aria-pressed', String(on));
+        phoneFlashLightOptions.hidden = !on;
     
         crystalMat.emissiveIntensity = on ? 8 : 0;
         crystalAuraMat.opacity = on ? 1 : 0;
@@ -33,13 +53,89 @@ export function setupInteractionControls(context) {
         });
     }
     
-    document.getElementById('toggle').addEventListener('click', () => setLightState(!lightOn));
-    lightColorInput.addEventListener('input', () => {
-        lightColor.set(lightColorInput.value);
+    function applyLightColor(value) {
+        lightColor.set(value);
         crystalMat.emissive.copy(lightColor);
         crystalAuraMat.color.copy(lightColor);
         crystalLight.color.copy(lightColor);
         reflections.forEach((reflection) => reflection.material.color.copy(lightColor));
+    }
+
+    function setLightColor(value) {
+        lightColorInput.value = value;
+        phoneLightColorInput.value = value;
+        applyLightColor(value);
+    }
+
+    document.getElementById('toggle').addEventListener('click', () => setLightState(!lightOn));
+    phoneLightToggle.addEventListener('click', () => setLightState(!lightOn));
+    lightColorInput.addEventListener('input', () => setLightColor(lightColorInput.value));
+    phoneBlinkToggle.addEventListener('click', () => {
+        blinkEnabled = !blinkEnabled;
+        phoneBlinkToggle.textContent = `깜빡임 ${blinkEnabled ? 'ON' : 'OFF'}`;
+        phoneBlinkToggle.setAttribute('aria-pressed', String(blinkEnabled));
+        phoneBlinkStyleToggle.hidden = !blinkEnabled;
+    });
+    phoneBlinkStyleToggle.addEventListener('click', () => {
+        softBlink = !softBlink;
+        phoneBlinkStyleToggle.textContent = softBlink ? '부드럽게' : '딱딱하게';
+        phoneBlinkStyleToggle.setAttribute('aria-pressed', String(softBlink));
+    });
+    phoneBlinkSpeedInput.addEventListener('input', () => {
+        blinkSpeed = Number(phoneBlinkSpeedInput.value);
+        phoneBlinkSpeedValue.value = `${blinkSpeed.toFixed(1)}회/초`;
+    });
+    const additionalLightColors = ['#ff4fa3', '#59c7ff', '#ffe066'];
+    phoneAddLightColor.addEventListener('click', () => {
+        const colorCount = phoneLightColors.querySelectorAll('input[type="color"]').length;
+        const label = document.createElement('label');
+        label.className = 'phone-flash-option phone-flash-color has-remove';
+        const colorLabel = document.createElement('span');
+        colorLabel.textContent = `색상 ${colorCount + 1}`;
+        const colorInput = document.createElement('input');
+        colorInput.type = 'color';
+        colorInput.value = additionalLightColors[(colorCount - 1) % additionalLightColors.length];
+        colorInput.setAttribute('aria-label', `순서 색상 ${colorCount + 1}`);
+        label.append(colorLabel, colorInput);
+        phoneLightColors.append(label);
+        updateLightColorRemoveButtons();
+    });
+    phoneLightColors.addEventListener('click', (event) => {
+        const removeButton = event.target.closest('.phone-flash-color-remove');
+        const colorLabel = removeButton?.closest('.phone-flash-color');
+        if (!colorLabel || colorLabel === phoneLightColors.querySelector('.phone-flash-color')) return;
+        colorLabel.remove();
+        updateLightColorRemoveButtons();
+    });
+    function updateLightColorRemoveButtons() {
+        const colorLabels = phoneLightColors.querySelectorAll('.phone-flash-color');
+        colorLabels.forEach((label, index) => {
+            const isDefaultColor = index === 0;
+            const labelText = isDefaultColor ? '기본 색상' : `색상 ${index + 1}`;
+            label.querySelector('span').textContent = labelText;
+            label.querySelector('input[type="color"]').setAttribute(
+                'aria-label',
+                isDefaultColor ? '기본 라이트 색상' : `순서 색상 ${index + 1}`
+            );
+            const removeColorButton = label.querySelector('.phone-flash-color-remove');
+            if (isDefaultColor) {
+                removeColorButton?.remove();
+                label.classList.remove('has-remove');
+                return;
+            }
+            label.classList.add('has-remove');
+            const colorRemoveButton = removeColorButton || document.createElement('button');
+            colorRemoveButton.type = 'button';
+            colorRemoveButton.className = 'phone-flash-color-remove';
+            colorRemoveButton.textContent = '×';
+            colorRemoveButton.setAttribute('aria-label', `${labelText} 삭제`);
+            if (!removeColorButton) label.append(colorRemoveButton);
+        });
+        phoneLightColorHint.hidden = colorLabels.length < 2;
+    }
+    updateLightColorRemoveButtons();
+    phoneLightColors.addEventListener('input', (event) => {
+        if (event.target === phoneLightColorInput) setLightColor(phoneLightColorInput.value);
     });
     lightColorInput.dispatchEvent(new Event('input'));
     const darkModeToggle = document.getElementById('darkModeToggle');
@@ -52,12 +148,41 @@ export function setupInteractionControls(context) {
     const frameToggle = document.getElementById('frameToggle');
     const captureFrame = document.querySelector('.capture-frame');
     const phoneCaptureButton = document.getElementById('phoneCaptureButton');
+    const gifRecordingTimer = document.getElementById('gifRecordingTimer');
+    const phoneInvertButton = document.getElementById('phoneInvertButton');
+    const phoneCaptureIntro = document.getElementById('phoneCaptureIntro');
     const cameraHeightControls = document.getElementById('cameraHeightControls');
     const cameraFeed = document.getElementById('cameraFeed');
     const cameraToggle = document.getElementById('cameraToggle');
     const cameraFacingToggle = document.getElementById('cameraFacingToggle');
     const screenImageBackLayer = document.getElementById('screenImageBackLayer');
     const screenImageFrontLayer = document.getElementById('screenImageFrontLayer');
+    const lightstickDecorLayer = document.getElementById('lightstickDecorLayer');
+    const decorPatternCycle = document.getElementById('decorPatternCycle');
+    const decorPatternColor = document.getElementById('decorPatternColor');
+    const decorBackgroundToggle = document.getElementById('decorBackgroundToggle');
+    const decorBackgroundColor = document.getElementById('decorBackgroundColor');
+    const cameraDecorations = [
+        {
+            element: document.getElementById('dotDecorLayer'),
+            label: '점'
+        },
+        {
+            element: document.getElementById('heartDecorLayer'),
+            label: '큰 하트'
+        },
+        {
+            element: document.getElementById('miniHeartDecorLayer'),
+            label: '작은 하트'
+        }
+    ].map((decoration) => ({
+        ...decoration,
+        image: new Image()
+    }));
+    let cameraDecorationIndex = cameraDecorations.length;
+    cameraDecorations.forEach(({ element, image }) => {
+        image.src = element.dataset.imageSrc;
+    });
     const screenImageControls = document.getElementById('screenImageControls');
     const screenImageLayerToggle = document.getElementById('screenImageLayerToggle');
     const screenImageLockToggle = document.getElementById('screenImageLockToggle');
@@ -68,10 +193,13 @@ export function setupInteractionControls(context) {
     const backgroundImageInput = document.getElementById('backgroundImageInput');
     let backgroundImageUrl = null;
     let selectedScreenImage = null;
-    let activeScreenImageDrag = null;
     const screenImageAlphaMasks = new WeakMap();
     const screenImageRemovers = new WeakMap();
     const viewHint = document.getElementById('viewHint');
+    const menuToggleButton = document.getElementById('menuToggle');
+    const controlMenu = document.getElementById('controlMenu');
+    const captureCustomizerToggle = document.getElementById('captureMenuToggle');
+    const captureCustomizer = document.getElementById('captureCustomizer');
     const lightstickBaseY = lightstick.position.y;
     let frontMode = false;
     let activeFrontPointerId = null;
@@ -84,11 +212,31 @@ export function setupInteractionControls(context) {
     let moonCaptureAlertShown = false;
     let beaPairCaptureAlertShown = false;
     let chaKimPairCaptureAlertShown = false;
+    let phoneCaptureIntroDismissed = false;
 
     document.addEventListener('contextmenu', (event) => {
         event.preventDefault();
     });
-    
+
+    function setPhoneFlashControlsOpen(open) {
+        phoneFlashControls.hidden = !open;
+        phoneFlashTrigger.setAttribute('aria-expanded', String(open));
+    }
+
+    phoneFlashTrigger.addEventListener('click', () => {
+        setPhoneFlashControlsOpen(phoneFlashControls.hidden);
+    });
+    phoneFlashClose.addEventListener('click', () => {
+        setPhoneFlashControlsOpen(false);
+        phoneFlashTrigger.focus();
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !phoneFlashControls.hidden) {
+            setPhoneFlashControlsOpen(false);
+            phoneFlashTrigger.focus();
+        }
+    });
+
     function setCaptureMode(enabled) {
         if (
             enabled &&
@@ -100,7 +248,31 @@ export function setupInteractionControls(context) {
         captureMode = enabled;
         document.body.classList.toggle('capture-mode', enabled);
         captureControls.hidden = !enabled;
+        if (!enabled) setPhoneFlashControlsOpen(false);
+        if (
+            enabled &&
+            matchMedia('(orientation: portrait)').matches &&
+            !phoneCaptureIntroDismissed
+        ) {
+            phoneCaptureIntro.hidden = false;
+            phoneCaptureIntro.focus();
+        }
+        if (!enabled) resetCameraDecorations();
     }
+
+    function dismissPhoneCaptureIntro() {
+        phoneCaptureIntro.hidden = true;
+        phoneCaptureIntroDismissed = true;
+        phoneCaptureButton.focus();
+    }
+
+    phoneCaptureIntro.addEventListener('click', dismissPhoneCaptureIntro);
+    phoneCaptureIntro.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            dismissPhoneCaptureIntro();
+        }
+    });
 
     function setFrameEnabled(enabled) {
         frameEnabled = enabled;
@@ -114,16 +286,74 @@ export function setupInteractionControls(context) {
         document.body.classList.toggle('frame-color-inverted', frameColorInverted);
     }
 
-    captureFrame.addEventListener('click', (event) => {
-        if (!(event.target instanceof Element)) return;
-        if (event.target.closest('#phoneCaptureButton')) return;
-        if (!event.target.closest('.desktop-overlay, .phone-frame')) return;
+    function updateCameraDecoration() {
+        cameraDecorations.forEach(({ element }, index) => {
+            element.hidden = index !== cameraDecorationIndex;
+            element.style.setProperty('--decor-color', decorPatternColor.value);
+        });
+        const selectedPattern = cameraDecorations[cameraDecorationIndex];
+        decorPatternCycle.textContent = `무늬: ${selectedPattern?.label || '없음'}`;
+        decorPatternCycle.setAttribute('aria-pressed', String(Boolean(selectedPattern)));
+    }
+
+    function resetCameraDecorations() {
+        cameraDecorationIndex = cameraDecorations.length;
+        decorPatternColor.value = '#ff4fa3';
+        updateCameraDecoration();
+        decorBackgroundToggle.checked = false;
+        decorBackgroundColor.value = '#ffffff';
+        lightstickDecorLayer.style.backgroundColor = '';
+    }
+
+    decorPatternCycle.addEventListener('click', () => {
+        cameraDecorationIndex = (cameraDecorationIndex + 1) % (cameraDecorations.length + 1);
+        updateCameraDecoration();
+    });
+    decorPatternColor.addEventListener('input', updateCameraDecoration);
+    decorBackgroundToggle.addEventListener('change', () => {
+        lightstickDecorLayer.style.backgroundColor = decorBackgroundToggle.checked
+            ? decorBackgroundColor.value
+            : '';
+    });
+    decorBackgroundColor.addEventListener('input', () => {
+        if (decorBackgroundToggle.checked) {
+            lightstickDecorLayer.style.backgroundColor = decorBackgroundColor.value;
+        }
+    });
+
+    function closeControlMenu() {
+        if (!controlMenu.hidden && controlMenu.classList.contains('is-open')) {
+            menuToggleButton.click();
+        }
+    }
+
+    function closeCaptureCustomizer() {
+        if (!captureCustomizer.hidden && captureCustomizer.classList.contains('is-open')) {
+            captureCustomizerToggle.click();
+        }
+    }
+
+    phoneInvertButton.addEventListener('click', () => {
+        const isMobileCameraViewport = matchMedia('(pointer: coarse)').matches
+            || navigator.maxTouchPoints > 0
+            || (innerWidth <= 800 && matchMedia('(orientation: portrait)').matches);
+        if (!isMobileCameraViewport) return;
         toggleFrameColorInversion();
     });
-    
-    captureModeToggle.addEventListener('click', () => setCaptureMode(true));
-    exitCaptureMode.addEventListener('click', () => setCaptureMode(false));
-    frameToggle.addEventListener('click', () => setFrameEnabled(!frameEnabled));
+
+    captureModeToggle.addEventListener('click', () => {
+        setCaptureMode(true);
+        closeControlMenu();
+    });
+    exitCaptureMode.addEventListener('click', () => {
+        setCaptureMode(false);
+        closeCaptureCustomizer();
+        closeControlMenu();
+    });
+    frameToggle.addEventListener('click', () => {
+        setFrameEnabled(!frameEnabled);
+        if (!frameEnabled) setPhoneFlashControlsOpen(false);
+    });
     
     function screenImageContainsPoint(image, clientX, clientY) {
         const alphaMask = screenImageAlphaMasks.get(image);
@@ -156,26 +386,6 @@ export function setupInteractionControls(context) {
         }
         return null;
     }
-    
-    document.addEventListener('pointermove', (event) => {
-        const drag = activeScreenImageDrag;
-        if (!drag || event.pointerId !== drag.pointerId) return;
-        const deltaX = event.clientX - drag.startX;
-        const deltaY = event.clientY - drag.startY;
-        if (!drag.moved && Math.hypot(deltaX, deltaY) < 3) return;
-        drag.moved = true;
-        event.preventDefault();
-        event.stopPropagation();
-        drag.image.style.left = `${THREE.MathUtils.clamp(drag.startLeft + deltaX, 0, innerWidth - drag.image.offsetWidth)}px`;
-        drag.image.style.top = `${THREE.MathUtils.clamp(drag.startTop + deltaY, 0, innerHeight - drag.image.offsetHeight)}px`;
-        positionScreenImageControls();
-    }, true);
-    
-    const finishScreenImageDrag = (event) => {
-        if (activeScreenImageDrag?.pointerId === event.pointerId) activeScreenImageDrag = null;
-    };
-    document.addEventListener('pointerup', finishScreenImageDrag, true);
-    document.addEventListener('pointercancel', finishScreenImageDrag, true);
     
     function stopCamera() {
         cameraRequestId += 1;
@@ -338,17 +548,6 @@ export function setupInteractionControls(context) {
         event.preventDefault();
         event.stopPropagation();
         selectScreenImage(hitImage);
-        if (hitImage.dataset.locked !== 'true' && event.button === 0) {
-            activeScreenImageDrag = {
-            image: hitImage,
-            pointerId: event.pointerId,
-            startX: event.clientX,
-            startY: event.clientY,
-            startLeft: Number.parseFloat(hitImage.style.left) || 0,
-            startTop: Number.parseFloat(hitImage.style.top) || 0,
-            moved: false
-            };
-        }
         return;
         }
         if (selectedScreenImage) selectScreenImage(null);
@@ -380,7 +579,7 @@ export function setupInteractionControls(context) {
         image.dataset.locked = 'false';
         image.src = objectUrl;
         image.alt = file.name;
-        image.title = '드래그하여 이동 · 클릭해 조절 · 두 번 클릭해 삭제';
+        image.title = '클릭해 조절 · 두 번 클릭해 삭제';
         image.draggable = false;
         image.tabIndex = 0;
         screenImageFrontLayer.appendChild(image);
@@ -531,8 +730,47 @@ export function setupInteractionControls(context) {
         context.restore();
         });
     }
+
+    async function drawCameraDecorations(context, width, height, captureScale) {
+        const enabledDecorations = cameraDecorations.filter((_, index) => index === cameraDecorationIndex);
+        await Promise.all(enabledDecorations.map(({ image }) => image.decode()));
+
+        if (decorBackgroundToggle.checked) {
+            context.fillStyle = decorBackgroundColor.value;
+            context.fillRect(0, 0, width, height);
+        }
+
+        for (const { image, label } of enabledDecorations) {
+            if (!image.naturalWidth || !image.naturalHeight) {
+                throw new Error(`${label} 이미지를 불러오지 못했습니다.`);
+            }
+            const maskCanvas = document.createElement('canvas');
+            maskCanvas.width = Math.round(width * captureScale);
+            maskCanvas.height = Math.round(height * captureScale);
+            const maskContext = maskCanvas.getContext('2d');
+            if (!maskContext) throw new Error('카메라 장식용 캔버스를 준비하지 못했습니다.');
+
+            const maskScale = Math.max(
+                maskCanvas.width / image.naturalWidth,
+                maskCanvas.height / image.naturalHeight
+            );
+            const maskWidth = image.naturalWidth * maskScale;
+            const maskHeight = image.naturalHeight * maskScale;
+            maskContext.drawImage(
+                image,
+                (maskCanvas.width - maskWidth) / 2,
+                (maskCanvas.height - maskHeight) / 2,
+                maskWidth,
+                maskHeight
+            );
+            maskContext.globalCompositeOperation = 'source-in';
+            maskContext.fillStyle = decorPatternColor.value;
+            maskContext.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+            context.drawImage(maskCanvas, 0, 0, width, height);
+        }
+    }
     
-    async function captureScreen() {
+    async function captureScreen(maxDimension = null, maxPixelCount = null) {
         const width = innerWidth;
         const height = innerHeight;
         const captureScale = Math.min(
@@ -540,7 +778,9 @@ export function setupInteractionControls(context) {
         3,
         8192 / width,
         8192 / height,
-        Math.sqrt(40000000 / (width * height))
+        Math.sqrt(40000000 / (width * height)),
+        maxPixelCount ? Math.sqrt(maxPixelCount / (width * height)) : Infinity,
+        maxDimension ? maxDimension / Math.max(width, height) : Infinity
         );
         const captureCanvas = document.createElement('canvas');
         captureCanvas.width = Math.round(width * captureScale);
@@ -575,6 +815,7 @@ export function setupInteractionControls(context) {
         if (backgroundImage?.complete && backgroundImage.naturalWidth) {
             context.drawImage(backgroundImage, 0, 0, width, height);
         }
+        await drawCameraDecorations(context, width, height, captureScale);
         drawScreenImages(screenImageBackLayer, context);
         const previousPixelRatio = renderer.getPixelRatio();
         const previousRendererSize = renderer.getSize(new THREE.Vector2());
@@ -627,26 +868,21 @@ export function setupInteractionControls(context) {
         });
         }
     
-        const blob = await new Promise((resolve, reject) => {
-        captureCanvas.toBlob((result) => {
-            if (result) resolve(result);
-            else reject(new Error('캡쳐 이미지를 생성하지 못했습니다.'));
-        }, 'image/png');
-        });
+        return captureCanvas;
+    }
+
+    async function downloadCapture(blob, extension) {
         const downloadUrl = URL.createObjectURL(blob);
         const download = document.createElement('a');
         download.href = downloadUrl;
-        download.download = `lightstick-capture-${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+        download.download = `lightstick-capture-${new Date().toISOString().replace(/[:.]/g, '-')}.${extension}`;
         document.body.appendChild(download);
         download.click();
         download.remove();
         setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
     }
-    
-    async function handleCaptureRequest() {
-        captureControls.hidden = true;
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        try {
+
+    function showCaptureAlerts() {
         const selectedFiles = [...selectedPartFiles.values()].map((file) => file.split('/').pop());
         const isMoonSoloCombination = selectedFiles.filter((file) => file === 'moon.html').length === 1
             && selectedFiles.every((file) => !file || file === 'moon.html');
@@ -675,17 +911,165 @@ export function setupInteractionControls(context) {
             specialCaptureAlertShown = true;
             alert(Math.random() < 0.5 ? 'Oh, 우리 팬이에요?' : '…건우 형?');
         }
-        await captureScreen();
-        } catch (error) {
-        console.error('화면 캡쳐에 실패했습니다.', error);
-        alert(`화면 캡쳐에 실패했습니다: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    async function withCaptureControlsHidden(callback, hideControls = true) {
+        if (hideControls) {
+            captureControls.hidden = true;
+            await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        try {
+            await callback();
         } finally {
-        if (captureMode) captureControls.hidden = false;
+            if (hideControls && captureMode) captureControls.hidden = false;
         }
     }
-    
-    takeCapture.addEventListener('click', handleCaptureRequest);
-    phoneCaptureButton.addEventListener('click', handleCaptureRequest);
+
+    async function handleCaptureRequest() {
+        try {
+            await withCaptureControlsHidden(async () => {
+                showCaptureAlerts();
+                const canvas = await captureScreen();
+                const blob = await new Promise((resolve, reject) => {
+                    canvas.toBlob((result) => {
+                        if (result) resolve(result);
+                        else reject(new Error('캡쳐 이미지를 생성하지 못했습니다.'));
+                    }, 'image/png');
+                });
+                await downloadCapture(blob, 'png');
+            });
+        } catch (error) {
+            console.error('화면 캡쳐에 실패했습니다.', error);
+            alert(`화면 캡쳐에 실패했습니다: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    const gifFrameInterval = 1000 / 8;
+    const gifMaxDuration = 5000;
+    const gifMaxDimension = 1600;
+    const gifMaxPixelCount = 1200000;
+    let activeGifRecording = null;
+
+    function updateGifRecordingTimer(recording) {
+        if (activeGifRecording !== recording || recording.stopped) return;
+        const elapsed = Math.min(performance.now() - recording.startedAt, gifMaxDuration);
+        gifRecordingTimer.textContent = `${(elapsed / 1000).toFixed(1)}초`;
+        recording.timerFrame = requestAnimationFrame(() => updateGifRecordingTimer(recording));
+    }
+
+    function setGifRecordingUi(button, isRecording) {
+        button.classList.toggle('is-recording', isRecording);
+        if (button === takeCapture) {
+            button.textContent = isRecording ? 'GIF 녹화 중 (최대 5초) · 놓으면 저장' : '화면 캡쳐';
+        } else {
+            button.setAttribute('aria-label', isRecording ? 'GIF 녹화 중, 최대 5초, 놓으면 저장' : '폰 버튼을 눌러 화면 캡처');
+        }
+        button.title = isRecording ? '최대 5초 녹화합니다. 놓으면 GIF로 저장됩니다' : '화면 캡처 · 길게 누르면 GIF';
+    }
+
+    async function recordGif(button, recording) {
+        recording.startedAt = performance.now();
+        gifRecordingTimer.hidden = false;
+        updateGifRecordingTimer(recording);
+        setGifRecordingUi(button, true);
+        try {
+            await withCaptureControlsHidden(async () => {
+                showCaptureAlerts();
+                const firstFrame = await captureScreen(gifMaxDimension, gifMaxPixelCount);
+                const width = firstFrame.width;
+                const height = firstFrame.height;
+                const frameCanvas = document.createElement('canvas');
+                frameCanvas.width = width;
+                frameCanvas.height = height;
+                const frameContext = frameCanvas.getContext('2d', { willReadFrequently: true });
+                if (!frameContext) throw new Error('GIF 프레임을 준비하지 못했습니다.');
+
+                const capturedFrames = [];
+                const appendFrame = (canvas) => {
+                    frameContext.drawImage(canvas, 0, 0, width, height);
+                    capturedFrames.push(frameContext.getImageData(0, 0, width, height));
+                };
+                appendFrame(firstFrame);
+                while (!recording.stopped && performance.now() - recording.startedAt < gifMaxDuration) {
+                    await new Promise((resolve) => setTimeout(resolve, gifFrameInterval));
+                    if (recording.stopped || performance.now() - recording.startedAt >= gifMaxDuration) break;
+                    const canvas = await captureScreen(gifMaxDimension, gifMaxPixelCount);
+                    const elapsed = performance.now() - recording.startedAt;
+                    if (elapsed >= gifMaxDuration) break;
+                    appendFrame(canvas);
+                }
+                recording.stopped = true;
+                cancelAnimationFrame(recording.timerFrame);
+                const { palette, colorMap } = createGifPalette(capturedFrames);
+                const frames = capturedFrames.map((frame) => quantizeGifFrame(frame, colorMap, palette));
+                capturedFrames.length = 0;
+                const gifBytes = encodeGif(width, height, frames, palette, Math.floor(gifFrameInterval / 10));
+                await downloadCapture(new Blob([gifBytes], { type: 'image/gif' }), 'gif');
+            }, false);
+        } catch (error) {
+            console.error('GIF 저장에 실패했습니다.', error);
+            alert(`GIF 저장에 실패했습니다: ${error instanceof Error ? error.message : String(error)}`);
+        } finally {
+            cancelAnimationFrame(recording.timerFrame);
+            gifRecordingTimer.hidden = true;
+            setGifRecordingUi(button, false);
+            if (activeGifRecording === recording) activeGifRecording = null;
+        }
+    }
+
+    function startGifRecording(button) {
+        const recording = { stopped: false, startedAt: 0, timerFrame: 0 };
+        activeGifRecording = recording;
+        recording.promise = recordGif(button, recording);
+    }
+
+    function stopGifRecording() {
+        if (activeGifRecording) activeGifRecording.stopped = true;
+    }
+
+    function setupCaptureButton(button) {
+        let pressTimer = null;
+        let activePointerId = null;
+        let longPressStarted = false;
+        let suppressClick = false;
+
+        button.addEventListener('pointerdown', (event) => {
+            if (event.button !== 0 || activePointerId !== null || activeGifRecording) return;
+            activePointerId = event.pointerId;
+            longPressStarted = false;
+            suppressClick = false;
+            button.setPointerCapture(event.pointerId);
+            pressTimer = setTimeout(() => {
+                longPressStarted = true;
+                startGifRecording(button);
+            }, 500);
+        });
+
+        const finishPress = (event) => {
+            if (event.pointerId !== activePointerId) return;
+            clearTimeout(pressTimer);
+            pressTimer = null;
+            activePointerId = null;
+            suppressClick = event.type === 'pointerup';
+            if (longPressStarted) stopGifRecording();
+            else if (event.type === 'pointerup') handleCaptureRequest();
+        };
+        button.addEventListener('pointerup', finishPress);
+        button.addEventListener('pointercancel', finishPress);
+        button.addEventListener('click', (event) => {
+            if (event.detail === 0) {
+                handleCaptureRequest();
+                return;
+            }
+            if (suppressClick) {
+                suppressClick = false;
+                event.preventDefault();
+            }
+        });
+    }
+
+    setupCaptureButton(takeCapture);
+    setupCaptureButton(phoneCaptureButton);
     
     function setCameraView(front) {
         controls.enabled = true;
@@ -826,12 +1210,25 @@ export function setupInteractionControls(context) {
         const t = clock.getElapsedTime();
     
         controls.update();
-        updateSpecialEffects({ lightOn, darkModeOn, elapsedTime: t });
+        const blinkPhase = (t * blinkSpeed) % 1;
+        const isHardBlinkOn = blinkPhase < 0.5;
+        const softBlinkIntensity = (1 - Math.cos(blinkPhase * Math.PI * 2)) / 2;
+        const lightColorInputs = phoneLightColors.querySelectorAll('input[type="color"]');
+        const colorIndex = blinkEnabled
+            ? Math.floor(t * blinkSpeed) % lightColorInputs.length
+            : 0;
+        const activeColor = lightColorInputs[colorIndex]?.value || phoneLightColorInput.value;
+        if (activeColor !== `#${lightColor.getHexString()}`) applyLightColor(activeColor);
+        const blinkIntensity = blinkEnabled
+            ? (softBlink ? softBlinkIntensity : (isHardBlinkOn ? 1 : 0))
+            : 1;
+        const isLightVisible = lightOn && blinkIntensity > 0;
+        updateSpecialEffects({ lightOn: isLightVisible, darkModeOn, elapsedTime: t });
     
-        if (lightOn) {
-        crystalMat.emissiveIntensity = 7 + Math.sin(t * 3.2) * 1;
-        crystalAuraMat.opacity = 0.95 + Math.sin(t * 2.4) * 0.05;
-        crystalLight.intensity = 8 + Math.sin(t * 2.4) * 1;
+        if (isLightVisible) {
+        crystalMat.emissiveIntensity = (7 + Math.sin(t * 3.2) * 1) * blinkIntensity;
+        crystalAuraMat.opacity = (0.95 + Math.sin(t * 2.4) * 0.05) * blinkIntensity;
+        crystalLight.intensity = (8 + Math.sin(t * 2.4) * 1) * blinkIntensity;
         const auraSize = 4.1 + Math.sin(t * 2.4) * 0.28;
         crystalAura.scale.set(auraSize, auraSize, 1);
         const isCompactViewport = innerWidth <= 600;
@@ -840,12 +1237,19 @@ export function setupInteractionControls(context) {
             const isSoftenedOut = isCompactViewport && index % 2 === 1;
             reflection.material.opacity = isSoftenedOut
                 ? 0
-                : reflection.userData.baseOpacity * shimmer * (isCompactViewport ? 0.65 : 1);
+                : reflection.userData.baseOpacity * shimmer * (isCompactViewport ? 0.65 : 1) * blinkIntensity;
             const pulse = 0.85 + shimmer * 0.3;
             reflection.scale.setScalar(
                 reflection.userData.baseSize * pulse * (isCompactViewport ? 1.6 : 1)
             );
         });
+        } else {
+            crystalMat.emissiveIntensity = 0;
+            crystalAuraMat.opacity = 0;
+            crystalLight.intensity = 0;
+            reflections.forEach((reflection) => {
+                reflection.material.opacity = 0;
+            });
         }
     
         renderer.render(scene, camera);

@@ -17,6 +17,11 @@
 <body>
   <video id="cameraFeed" autoplay playsinline muted></video>
   <div class="background-image-layer" id="backgroundImageLayer" aria-hidden="true"></div>
+  <div class="lightstick-decor-layer" id="lightstickDecorLayer" aria-hidden="true">
+    <div class="lightstick-decor-pattern" id="dotDecorLayer" data-image-src="img/dot.png" hidden></div>
+    <div class="lightstick-decor-pattern" id="heartDecorLayer" data-image-src="img/heart.png" hidden></div>
+    <div class="lightstick-decor-pattern" id="miniHeartDecorLayer" data-image-src="img/mini_heart.png" hidden></div>
+  </div>
   <div id="app"></div>
   <div id="screenImageBackLayer" aria-label="응원봉 뒤 이미지"></div>
   <div id="screenImageFrontLayer" aria-label="응원봉 앞 이미지"></div>
@@ -27,16 +32,71 @@
     <button type="button" data-axis="y" data-direction="-1" aria-label="카메라 시점 내리기" title="시점 내리기">▼</button>
   </div>
   <div class="capture-frame">
-    <img class="desktop-overlay desktop-left-top" src="img/desktop-left-top.png" alt="" />
-    <img class="desktop-overlay desktop-left-bottom" src="img/desktop-left-bottom.png" alt="" />
-    <img class="desktop-overlay desktop-middle-bottom" src="img/desktop-middle-bottom.png" alt="" />
-    <img class="desktop-overlay desktop-right-top" src="img/desktop-right-top.png" alt="" />
-    <img class="desktop-overlay desktop-right-bottom" src="img/desktop-right-bottom.png" alt="" />
-    <img class="phone-frame phone-top" src="img/phone-top.png" alt="" />
-    <div class="phone-bottom-frame">
-      <img class="phone-frame phone-bottom" src="img/phone-bottom.png" alt="" />
-      <button id="phoneCaptureButton" type="button" aria-label="폰 버튼을 눌러 화면 캡처" title="화면 캡처"></button>
+    <img class="desktop-overlay desktop-left-top" src="img/desktop-left-top.png" alt="" draggable="false" />
+    <img class="desktop-overlay desktop-left-bottom" src="img/desktop-left-bottom.png" alt="" draggable="false" />
+    <img class="desktop-overlay desktop-middle-bottom" src="img/desktop-middle-bottom.png" alt="" draggable="false" />
+    <img class="desktop-overlay desktop-right-top" src="img/desktop-right-top.png" alt="" draggable="false" />
+    <img class="desktop-overlay desktop-right-bottom" src="img/desktop-right-bottom.png" alt="" draggable="false" />
+    <div class="phone-top-frame">
+      <img class="phone-frame phone-top" src="img/phone-top.png" alt="" draggable="false" />
+      <button class="phone-flash-trigger" id="phoneFlashTrigger" type="button" aria-label="라이트 설정 열기" aria-expanded="false" aria-controls="phoneFlashControls" title="라이트 설정"></button>
     </div>
+    <section class="phone-flash-controls" id="phoneFlashControls" aria-label="라이트 설정" hidden>
+      <div class="phone-flash-controls-heading">
+        <strong>라이트 설정</strong>
+        <button id="phoneFlashClose" type="button" aria-label="라이트 설정 닫기">×</button>
+      </div>
+      <button id="phoneLightToggle" type="button" aria-pressed="false">라이트 켜기</button>
+      <div class="phone-flash-light-options" id="phoneFlashLightOptions" hidden>
+        <div class="phone-flash-toggles">
+          <button id="phoneBlinkToggle" type="button" aria-pressed="false">깜빡임 OFF</button>
+          <button id="phoneBlinkStyleToggle" type="button" aria-label="깜빡임 방식" aria-pressed="false" hidden>딱딱하게</button>
+        </div>
+        <label class="phone-flash-option" for="phoneBlinkSpeed">
+          <span>깜빡임 속도 <output id="phoneBlinkSpeedValue" for="phoneBlinkSpeed">2.0회/초</output></span>
+          <input id="phoneBlinkSpeed" type="range" min="0.5" max="5" step="0.5" value="2" />
+        </label>
+        <div class="phone-flash-colors" id="phoneLightColors" aria-label="순서대로 깜빡일 라이트 색상">
+          <label class="phone-flash-option phone-flash-color">
+            <span>기본 색상</span>
+            <input id="phoneLightColorInput" type="color" value="#ffffff" aria-label="기본 라이트 색상" />
+          </label>
+        </div>
+        <p class="phone-flash-color-hint" id="phoneLightColorHint" hidden>색상은 위에서 아래 순서로 깜빡입니다.</p>
+        <button id="phoneAddLightColor" type="button">색상 추가</button>
+      </div>
+    </section>
+    <div class="phone-bottom-frame">
+      <img class="phone-frame phone-bottom" src="img/phone-bottom.png" alt="" draggable="false" />
+      <output id="gifRecordingTimer" class="gif-recording-timer" aria-live="off" hidden></output>
+      <button id="phoneCaptureButton" type="button" aria-label="폰 버튼을 눌러 화면 캡처" title="화면 캡처"></button>
+      <button id="phoneInvertButton" type="button" aria-label="프레임 색 반전" title="프레임 색 반전"></button>
+    </div>
+  </div>
+  <div class="phone-capture-intro" id="phoneCaptureIntro" role="button" tabindex="0" aria-label="화면을 눌러 안내 닫기" hidden>
+    <img class="phone-capture-intro-top" src="img/phone-top-test.png" alt="" draggable="false" />
+    <img class="phone-capture-intro-middle" src="img/phone-middle-test.png" alt="" draggable="false" />
+    <img class="phone-capture-intro-bottom" src="img/phone-bottom-test.png" alt="" draggable="false" />
+  </div>
+  <button class="capture-menu-toggle" id="captureMenuToggle" type="button" aria-label="캡처 커스터마이저 열기" aria-expanded="false" aria-controls="captureCustomizer" title="캡처 커스터마이저">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="capture-customizer" id="captureCustomizer" hidden>
+    <div class="menu-heading">
+      <div><span class="eyebrow">CAPTURE CUSTOMIZER</span><strong>캡처 꾸미기</strong></div>
+    </div>
+    <section class="control-section" aria-label="무늬와 배경 설정">
+      <button id="decorPatternCycle" type="button" aria-pressed="false">무늬 변경: 없음</button>
+      <label class="camera-decor-option">
+        <span>무늬 색상</span>
+        <input id="decorPatternColor" type="color" value="#ff4fa3" aria-label="무늬 색상" />
+      </label>
+      <label class="camera-decor-option has-toggle">
+        <input id="decorBackgroundToggle" type="checkbox" />
+        <span>배경색 사용</span>
+        <input id="decorBackgroundColor" type="color" value="#ffffff" aria-label="카메라 배경 색상" />
+      </label>
+    </section>
   </div>
 
   <button class="menu-toggle" id="menuToggle" type="button" aria-expanded="false" aria-controls="controlMenu" aria-label="조작 메뉴 열기" title="조작 메뉴">
@@ -113,8 +173,11 @@
   <script>
     (() => {
       const toggle = document.getElementById('menuToggle');
+      const captureMenuToggle = document.getElementById('captureMenuToggle');
       const menu = document.getElementById('controlMenu');
+      const captureCustomizer = document.getElementById('captureCustomizer');
       let closeTimer;
+      let captureCustomizerCloseTimer;
       const setMenu = (open) => {
         window.clearTimeout(closeTimer);
         if (open) {
@@ -127,12 +190,35 @@
         toggle.setAttribute('aria-expanded', String(open));
         toggle.setAttribute('aria-label', open ? '조작 메뉴 닫기' : '조작 메뉴 열기');
       };
-      toggle.addEventListener('click', () => setMenu(menu.hidden || !menu.classList.contains('is-open')));
+      const setCaptureCustomizer = (open) => {
+        window.clearTimeout(captureCustomizerCloseTimer);
+        if (open) {
+          captureCustomizer.hidden = false;
+          requestAnimationFrame(() => captureCustomizer.classList.add('is-open'));
+        } else {
+          captureCustomizer.classList.remove('is-open');
+          captureCustomizerCloseTimer = window.setTimeout(() => { captureCustomizer.hidden = true; }, 220);
+        }
+        captureMenuToggle.setAttribute('aria-expanded', String(open));
+        captureMenuToggle.setAttribute('aria-label', open ? '캡처 커스터마이저 닫기' : '캡처 커스터마이저 열기');
+      };
+      const toggleMenu = () => setMenu(menu.hidden || !menu.classList.contains('is-open'));
+      toggle.addEventListener('click', toggleMenu);
+      captureMenuToggle.addEventListener('click', () => {
+        setMenu(false);
+        setCaptureCustomizer(captureCustomizer.hidden || !captureCustomizer.classList.contains('is-open'));
+      });
+      document.getElementById('exitCaptureMode').addEventListener('click', () => setCaptureCustomizer(false));
       document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !menu.hidden) setMenu(false);
+        if (event.key !== 'Escape') return;
+        if (!menu.hidden) setMenu(false);
+        if (!captureCustomizer.hidden) setCaptureCustomizer(false);
       });
       document.addEventListener('pointerdown', (event) => {
         if (!menu.hidden && !menu.contains(event.target) && !toggle.contains(event.target)) setMenu(false);
+        if (!captureCustomizer.hidden && !captureCustomizer.contains(event.target) && !captureMenuToggle.contains(event.target)) {
+          setCaptureCustomizer(false);
+        }
       });
       const partPanel = document.getElementById('partPanel');
       const partToggle = document.getElementById('partPanelToggle');
